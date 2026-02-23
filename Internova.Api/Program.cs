@@ -19,7 +19,7 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Infrastructure (EF Core + repositories)
+// Infrastructure (ADO.NET + repositories)
 builder.Services.AddInfrastructure(builder.Configuration);
 
 // ── Pipeline ──────────────────────────────────────────────────────────────────

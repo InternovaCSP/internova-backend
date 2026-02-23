@@ -11,16 +11,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- MySQL EF Core provider – pinned to align with EF Core 9.x -->
-    <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
+    <!-- Microsoft Extensions for Dependency Injection and Configuration -->
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.0" />
 
-    <!-- Pin EF Core packages to 9.x so they align with Pomelo -->
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
+    <!-- MySQL ADO.NET Driver -->
+    <PackageReference Include="MySql.Data" Version="9.2.0" />
 
     <!-- Blob storage for file uploads -->
     <PackageReference Include="Azure.Storage.Blobs" Version="12.27.0" />

@@ -1,7 +1,6 @@
 using Internova.Core.Interfaces;
 using Internova.Infrastructure.Data;
 using Internova.Infrastructure.Repositories;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,14 +16,8 @@ public static class ServiceRegistration
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // --- Database ---
-        var connectionString = configuration.GetConnectionString("Default")
-            ?? throw new InvalidOperationException(
-                "Connection string 'Default' is not configured in appsettings.");
-
-        services.AddDbContext<AppDbContext>(options =>
-            options.UseMySql(connectionString,
-                ServerVersion.AutoDetect(connectionString)));
+        // --- Database (ADO.NET) ---
+        services.AddSingleton<DbConnectionFactory>();
 
         // --- Repositories ---
         services.AddScoped<IUserRepository, UserRepository>();
