@@ -431,3 +431,50 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# macOS system files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ASP.NET Core sensitive configuration (may contain secrets, connection strings, etc.)
+appsettings.Development.json
+appsettings.Staging.json
+appsettings.Production.json
+# Keep the base appsettings.json (should only have non-sensitive defaults)
+!appsettings.json
+
+# ASP.NET Core User Secrets
+**/secrets.json
+
+# JetBrains Rider IDE
+.idea/
+*.sln.iml
+
+# Docker local overrides (may contain dev credentials)
+docker-compose.override.yml
+docker-compose.override.yaml
+
+# Entity Framework Core temporary/local files
+*.db
+*.db-shm
+*.db-wal
+
+# Azure local settings (may contain storage account keys)
+local.settings.json
+azure.local.settings.json
+
+# HTTP test files - comment out if you want to share .http test files with the team
+# (can contain Bearer tokens or API keys if not careful)
+*.http
+
+# Rider / VS run configs that may contain local env vars
+.run/
+
+# Vim/Neovim swap files
+*.swp
+*~
