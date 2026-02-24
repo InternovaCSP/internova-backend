@@ -103,7 +103,20 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// Infrastructure (EF Core + repositories)
+// CORS — allow Vite dev server to call the API
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("ViteDev", policy =>
+        policy.WithOrigins(
+                "http://localhost:5173",   // Vite dev server (default)
+                "http://localhost:5174",   // Vite dev server (fallback)
+                "http://localhost:5128")   // direct API access
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials());
+});
+
+// Infrastructure (ADO.NET + repositories)
 builder.Services.AddInfrastructure(builder.Configuration);
 
 // ── Pipeline ──────────────────────────────────────────────────────────────────
@@ -123,6 +136,9 @@ app.UseSwaggerUI(c =>
 });
 
 app.UseHttpsRedirection();
+
+// CORS must be placed before Authentication/Authorization
+app.UseCors("ViteDev");
 
 // Authentication must come before Authorization
 app.UseAuthentication();
