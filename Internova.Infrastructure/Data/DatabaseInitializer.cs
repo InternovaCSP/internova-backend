@@ -64,6 +64,15 @@ public static class DatabaseInitializer
             await cmd.ExecuteNonQueryAsync();
             logger.LogInformation("✅ dbo.Users table verified / created.");
         }
+        catch (SqlException ex) when (ex.Number == 40613 ||
+                                       ex.Message.Contains("not currently available", StringComparison.OrdinalIgnoreCase))
+        {
+            logger.LogError(ex,
+                "❌ Azure SQL database 'internova_db' is PAUSED or temporarily unavailable (error 40613). " +
+                "Go to Azure Portal → SQL databases → internova_db → Resume, then restart the app.");
+            throw new InvalidOperationException(
+                "Azure SQL database is paused. Resume it in the Azure Portal and try again.", ex);
+        }
         catch (SqlException ex) when (ex.Message.Contains("Cannot open database", StringComparison.OrdinalIgnoreCase) ||
                                        ex.Message.Contains("Login failed", StringComparison.OrdinalIgnoreCase))
         {
@@ -72,6 +81,14 @@ public static class DatabaseInitializer
                 "Create the database in the Azure Portal before starting the application.");
             throw new InvalidOperationException(
                 "Database 'internova_db' is not accessible. Create it in the Azure Portal.", ex);
+        }
+        catch (SqlException ex)
+        {
+            logger.LogError(ex,
+                "❌ SQL error {Number} when connecting to Azure SQL. Check your connection string and firewall rules.",
+                ex.Number);
+            throw new InvalidOperationException(
+                $"SQL error {ex.Number}: {ex.Message}", ex);
         }
     }
 }
