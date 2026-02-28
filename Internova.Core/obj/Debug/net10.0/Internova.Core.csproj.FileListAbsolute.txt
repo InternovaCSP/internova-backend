@@ -1,0 +1,12 @@
+C:\Users\sandi\Pictures\CSP Project\internova-backend\Internova.Core\bin\Debug\net10.0\Internova.Core.deps.json
+C:\Users\sandi\Pictures\CSP Project\internova-backend\Internova.Core\bin\Debug\net10.0\Internova.Core.dll
+C:\Users\sandi\Pictures\CSP Project\internova-backend\Internova.Core\bin\Debug\net10.0\Internova.Core.pdb
+C:\Users\sandi\Pictures\CSP Project\internova-backend\Internova.Core\obj\Debug\net10.0\Internova.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\sandi\Pictures\CSP Project\internova-backend\Internova.Core\obj\Debug\net10.0\Internova.Core.AssemblyInfoInputs.cache
+C:\Users\sandi\Pictures\CSP Project\internova-backend\Internova.Core\obj\Debug\net10.0\Internova.Core.AssemblyInfo.cs
+C:\Users\sandi\Pictures\CSP Project\internova-backend\Internova.Core\obj\Debug\net10.0\Internova.Core.csproj.CoreCompileInputs.cache
+C:\Users\sandi\Pictures\CSP Project\internova-backend\Internova.Core\obj\Debug\net10.0\Internova.Core.sourcelink.json
+C:\Users\sandi\Pictures\CSP Project\internova-backend\Internova.Core\obj\Debug\net10.0\Internova.Core.dll
+C:\Users\sandi\Pictures\CSP Project\internova-backend\Internova.Core\obj\Debug\net10.0\refint\Internova.Core.dll
+C:\Users\sandi\Pictures\CSP Project\internova-backend\Internova.Core\obj\Debug\net10.0\Internova.Core.pdb
+C:\Users\sandi\Pictures\CSP Project\internova-backend\Internova.Core\obj\Debug\net10.0\ref\Internova.Core.dll
