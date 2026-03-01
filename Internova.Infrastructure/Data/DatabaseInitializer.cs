@@ -26,6 +26,23 @@ public static class DatabaseInitializer
         );
         """;
 
+    private const string CreateStudentProfilesTableSql = """
+        CREATE TABLE IF NOT EXISTS StudentProfiles (
+            Id           INT             NOT NULL AUTO_INCREMENT,
+            UserId       INT             NOT NULL,
+            UniversityId VARCHAR(100)    NOT NULL,
+            Department   VARCHAR(200)    NOT NULL DEFAULT '',
+            GPA          DECIMAL(4,2)    NOT NULL DEFAULT 0.00,
+            Skills       TEXT            NOT NULL DEFAULT '',
+            ResumeUrl    VARCHAR(1024)   NOT NULL DEFAULT '',
+            CreatedAt    DATETIME(6)     NOT NULL DEFAULT (UTC_TIMESTAMP(6)),
+            UpdatedAt    DATETIME(6)     NOT NULL DEFAULT (UTC_TIMESTAMP(6)),
+            PRIMARY KEY (Id),
+            UNIQUE INDEX UX_StudentProfiles_UserId (UserId),
+            CONSTRAINT FK_StudentProfiles_Users FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE
+        );
+        """;
+
     public static async Task InitializeAsync(IConfiguration configuration, ILogger logger)
     {
         var connectionString = configuration.GetConnectionString("DefaultConnection");
@@ -77,6 +94,10 @@ public static class DatabaseInitializer
             await using var cmd = new MySqlCommand(CreateUsersTableSql, connection);
             await cmd.ExecuteNonQueryAsync();
             logger.LogInformation("✅ Users table verified / created.");
+
+            await using var cmd2 = new MySqlCommand(CreateStudentProfilesTableSql, connection);
+            await cmd2.ExecuteNonQueryAsync();
+            logger.LogInformation("✅ StudentProfiles table verified / created.");
         }
         catch (MySqlException ex)
         {
