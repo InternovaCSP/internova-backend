@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Internova.Api/Internova.Api.csproj" />
+  <Project Path="Internova.Core/Internova.Core.csproj" />
+  <Project Path="Internova.Infrastructure/Internova.Infrastructure.csproj" />
+</Solution>
