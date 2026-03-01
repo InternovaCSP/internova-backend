@@ -1,0 +1,122 @@
+-- 1. User Table
+CREATE TABLE [User] (
+    user_id INT IDENTITY(1,1) PRIMARY KEY,
+    full_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(MAX) NOT NULL,
+    role VARCHAR(50) CHECK (role IN ('Student', 'Company', 'Admin', 'Faculty', 'Organizer')),
+    contact_number VARCHAR(20),
+    is_approved BIT DEFAULT 0, -- 0 for False, 1 for True
+    created_at DATETIME2 DEFAULT GETDATE(),
+    updated_at DATETIME2 DEFAULT GETDATE()
+);
+
+-- 2. Student_Profile Table
+CREATE TABLE Student_Profile (
+    student_id INT PRIMARY KEY,
+    university_id VARCHAR(100),
+    department VARCHAR(100),
+    resume_link VARCHAR(2048),
+    skills TEXT,
+    gpa DECIMAL(3, 2),
+    created_at DATETIME2 DEFAULT GETDATE(),
+    CONSTRAINT FK_Student_User FOREIGN KEY (student_id) REFERENCES [User](user_id) ON DELETE CASCADE
+);
+
+-- 3. Company_Profile Table
+CREATE TABLE Company_Profile (
+    company_id INT PRIMARY KEY,
+    company_name VARCHAR(255) NOT NULL,
+    industry VARCHAR(100),
+    address TEXT,
+    description TEXT,
+    website_url VARCHAR(2048),
+    is_verified BIT DEFAULT 0,
+    CONSTRAINT FK_Company_User FOREIGN KEY (company_id) REFERENCES [User](user_id) ON DELETE CASCADE
+);
+
+-- 4. Project Table
+CREATE TABLE Project (
+    project_id INT IDENTITY(1,1) PRIMARY KEY,
+    leader_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    category VARCHAR(50) CHECK (category IN ('Research', 'Startup', 'Product')),
+    required_skills TEXT,
+    team_size INT,
+    status VARCHAR(50) DEFAULT 'Active' CHECK (status IN ('Active', 'Completed')),
+    is_approved BIT DEFAULT 0,
+    CONSTRAINT FK_Project_Leader FOREIGN KEY (leader_id) REFERENCES [User](user_id)
+);
+
+-- 5. Competition Table
+CREATE TABLE Competition (
+    competition_id INT IDENTITY(1,1) PRIMARY KEY,
+    organizer_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    category VARCHAR(100),
+    eligibility_criteria TEXT,
+    start_date DATE,
+    end_date DATE,
+    registration_link VARCHAR(2048),
+    is_approved BIT DEFAULT 0,
+    CONSTRAINT FK_Competition_Organizer FOREIGN KEY (organizer_id) REFERENCES [User](user_id)
+);
+
+-- 6. Internship Table
+CREATE TABLE Internship (
+    internship_id INT IDENTITY(1,1) PRIMARY KEY,
+    company_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    requirements TEXT,
+    duration VARCHAR(100),
+    location VARCHAR(255),
+    status VARCHAR(50) DEFAULT 'Active' CHECK (status IN ('Active', 'Closed')),
+    is_published BIT DEFAULT 0,
+    CONSTRAINT FK_Internship_Company FOREIGN KEY (company_id) REFERENCES Company_Profile(company_id)
+);
+
+-- 7. Project_Participation
+CREATE TABLE Project_Participation (
+    participation_id INT IDENTITY(1,1) PRIMARY KEY,
+    project_id INT NOT NULL,
+    student_id INT NOT NULL,
+    role VARCHAR(100),
+    status VARCHAR(50) DEFAULT 'Pending' CHECK (status IN ('Pending', 'Accepted', 'Rejected')),
+    joined_at DATETIME2 DEFAULT GETDATE(),
+    CONSTRAINT FK_PP_Project FOREIGN KEY (project_id) REFERENCES Project(project_id),
+    CONSTRAINT FK_PP_Student FOREIGN KEY (student_id) REFERENCES Student_Profile(student_id)
+);
+
+-- 8. Document_Storage
+CREATE TABLE Document_Storage (
+    document_id INT IDENTITY(1,1) PRIMARY KEY,
+    student_id INT NOT NULL,
+    type VARCHAR(50) CHECK (type IN ('Resume', 'Certificate', 'Project File')),
+    storage_url VARCHAR(2048) NOT NULL,
+    uploaded_at DATETIME2 DEFAULT GETDATE(),
+    CONSTRAINT FK_Doc_Student FOREIGN KEY (student_id) REFERENCES Student_Profile(student_id)
+);
+
+-- 9. Competition_Participation
+CREATE TABLE Competition_Participation (
+    comp_part_id INT IDENTITY(1,1) PRIMARY KEY,
+    competition_id INT NOT NULL,
+    student_id INT NOT NULL,
+    status VARCHAR(50) CHECK (status IN ('Registered', 'Submitted', 'Won', 'Participated')),
+    CONSTRAINT FK_CP_Comp FOREIGN KEY (competition_id) REFERENCES Competition(competition_id),
+    CONSTRAINT FK_CP_Student FOREIGN KEY (student_id) REFERENCES Student_Profile(student_id)
+);
+
+-- 10. Internship_Application
+CREATE TABLE Internship_Application (
+    application_id INT IDENTITY(1,1) PRIMARY KEY,
+    internship_id INT NOT NULL,
+    student_id INT NOT NULL,
+    status VARCHAR(50) DEFAULT 'Applied' CHECK (status IN ('Applied', 'Shortlisted', 'Interview', 'Selected', 'Rejected')),
+    applied_at DATETIME2 DEFAULT GETDATE(),
+    CONSTRAINT FK_IA_Internship FOREIGN KEY (internship_id) REFERENCES Internship(internship_id),
+    CONSTRAINT FK_IA_Student FOREIGN KEY (student_id) REFERENCES Student_Profile(student_id)
+);

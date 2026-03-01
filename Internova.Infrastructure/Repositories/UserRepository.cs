@@ -5,9 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Internova.Infrastructure.Repositories;
 
-/// <summary>
-/// EF Core implementation of IUserRepository.
-/// </summary>
+/// <summary>EF Core implementation of IUserRepository.</summary>
 public class UserRepository(AppDbContext context) : IUserRepository
 {
     private readonly AppDbContext _context = context;
@@ -25,6 +23,6 @@ public class UserRepository(AppDbContext context) : IUserRepository
     {
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
-        return user.UserId; // EF Core populates this after insert
+        return user.Id; // EF Core populates Id after INSERT
     }
 }

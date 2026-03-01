@@ -4,8 +4,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Internova.Infrastructure.Data;
 
 /// <summary>
-/// EF Core database context for Internova.
-/// Configures table mappings, constraints, and indexes.
+/// EF Core database context for Internova targeting local MySQL.
+/// Table mapping aligned with Users table created by DatabaseInitializer.
 /// </summary>
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
@@ -17,33 +17,38 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.HasKey(u => u.UserId);
+            entity.ToTable("Users"); // MySQL has no dbo schema
+
+            entity.HasKey(u => u.Id);
 
             entity.Property(u => u.FullName)
                   .IsRequired()
-                  .HasMaxLength(150);
+                  .HasMaxLength(200);
 
             entity.Property(u => u.Email)
                   .IsRequired()
-                  .HasMaxLength(200);
+                  .HasMaxLength(320);
 
-            // Enforce uniqueness on email at the database level.
             entity.HasIndex(u => u.Email)
-                  .IsUnique();
+                  .IsUnique()
+                  .HasDatabaseName("UX_Users_Email");
 
             entity.Property(u => u.PasswordHash)
-                  .IsRequired();
+                  .IsRequired()
+                  .HasMaxLength(255);
 
             entity.Property(u => u.Role)
                   .IsRequired()
-                  .HasMaxLength(50);
-
-            entity.Property(u => u.ContactNumber)
                   .HasMaxLength(20);
 
             entity.Property(u => u.CreatedAt)
-                  .HasColumnType("datetime")
-                  .HasDefaultValueSql("CURRENT_TIMESTAMP");
+                  .HasColumnType("datetime(6)")
+                  .HasDefaultValueSql("UTC_TIMESTAMP(6)");
+
+            // Enforce Role constraint to match DB CHECK constraint
+            entity.ToTable(t => t.HasCheckConstraint(
+                "CK_Users_Role",
+                "Role IN ('Student','Company','Admin')"));
         });
     }
 }
