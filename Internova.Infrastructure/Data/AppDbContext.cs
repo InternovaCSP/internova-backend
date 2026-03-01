@@ -4,8 +4,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Internova.Infrastructure.Data;
 
 /// <summary>
-/// EF Core database context for Internova targeting Azure SQL Server.
-/// Table mapping aligned with dbo.Users created by DatabaseInitializer.
+/// EF Core database context for Internova targeting local MySQL.
+/// Table mapping aligned with Users table created by DatabaseInitializer.
 /// </summary>
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
@@ -17,12 +17,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.ToTable("Users", "dbo");
+            entity.ToTable("Users"); // MySQL has no dbo schema
 
             entity.HasKey(u => u.Id);
-
-            entity.Property(u => u.Id)
-                  .UseIdentityColumn();
 
             entity.Property(u => u.FullName)
                   .IsRequired()
@@ -45,8 +42,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                   .HasMaxLength(20);
 
             entity.Property(u => u.CreatedAt)
-                  .HasColumnType("datetime2")
-                  .HasDefaultValueSql("SYSUTCDATETIME()");
+                  .HasColumnType("datetime(6)")
+                  .HasDefaultValueSql("UTC_TIMESTAMP(6)");
 
             // Enforce Role constraint to match DB CHECK constraint
             entity.ToTable(t => t.HasCheckConstraint(

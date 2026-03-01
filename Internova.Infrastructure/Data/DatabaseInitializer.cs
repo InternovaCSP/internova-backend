@@ -1,4 +1,4 @@
-using Microsoft.Data.SqlClient;
+using MySqlConnector;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -6,89 +6,84 @@ namespace Internova.Infrastructure.Data;
 
 /// <summary>
 /// Runs once at application startup to:
-/// 1. Verify the Azure SQL database is reachable.
-/// 2. Create dbo.Users if it does not already exist (idempotent).
+/// 1. Verify the local MySQL server is reachable.
+/// 2. Create the database if it does not exist (idempotent).
+/// 3. Create the Users table if it does not already exist (idempotent).
 /// </summary>
 public static class DatabaseInitializer
 {
     private const string CreateUsersTableSql = """
-        IF OBJECT_ID('dbo.Users','U') IS NULL
-        BEGIN
-            CREATE TABLE dbo.Users (
-                Id           INT            IDENTITY(1,1) NOT NULL,
-                FullName     NVARCHAR(200)  NOT NULL,
-                Email        NVARCHAR(320)  NOT NULL,
-                PasswordHash NVARCHAR(255)  NOT NULL,
-                Role         NVARCHAR(20)   NOT NULL,
-                CreatedAt    DATETIME2      NOT NULL
-                    CONSTRAINT DF_Users_CreatedAt DEFAULT (SYSUTCDATETIME()),
-                CONSTRAINT PK_Users PRIMARY KEY (Id),
-                CONSTRAINT CK_Users_Role CHECK (Role IN ('Student','Company','Admin'))
-            );
-            CREATE UNIQUE INDEX UX_Users_Email ON dbo.Users(Email);
-        END;
+        CREATE TABLE IF NOT EXISTS Users (
+            Id           INT            NOT NULL AUTO_INCREMENT,
+            FullName     VARCHAR(200)   NOT NULL,
+            Email        VARCHAR(320)   NOT NULL,
+            PasswordHash VARCHAR(255)   NOT NULL,
+            Role         VARCHAR(20)    NOT NULL,
+            CreatedAt    DATETIME(6)    NOT NULL DEFAULT (UTC_TIMESTAMP(6)),
+            PRIMARY KEY (Id),
+            UNIQUE INDEX UX_Users_Email (Email),
+            CONSTRAINT CK_Users_Role CHECK (Role IN ('Student','Company','Admin'))
+        );
         """;
 
     public static async Task InitializeAsync(IConfiguration configuration, ILogger logger)
     {
         var connectionString = configuration.GetConnectionString("DefaultConnection");
 
-        if (string.IsNullOrWhiteSpace(connectionString) ||
-            connectionString.Contains("{your_password", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(connectionString))
         {
             logger.LogError(
                 "ConnectionStrings:DefaultConnection is not configured. " +
-                "Run the following commands to configure user-secrets:\n\n" +
-                "  dotnet user-secrets init\n" +
-                "  dotnet user-secrets set \"ConnectionStrings:DefaultConnection\" " +
-                "\"Server=tcp:internovacsp.database.windows.net,1433;Initial Catalog=internova_db;" +
-                "Persist Security Info=False;User ID=internova_CS;Password=YOUR_PASSWORD;" +
-                "MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;" +
-                "Connection Timeout=30;\"\n" +
-                "  dotnet user-secrets set \"Jwt:Key\" \"<generate-32+-char-random-secret>\"\n" +
-                "  dotnet user-secrets set \"Jwt:Issuer\" \"Internova\"\n" +
-                "  dotnet user-secrets set \"Jwt:Audience\" \"InternovaUsers\"");
+                "Add it to appsettings.Development.json:\n\n" +
+                "  \"ConnectionStrings\": {{\n" +
+                "    \"DefaultConnection\": \"Server=localhost;Port=3306;Database=internova_db;User=root;Password=YOUR_PASSWORD;\"\n" +
+                "  }}");
 
             throw new InvalidOperationException(
-                "Database connection string is missing or unconfigured. " +
-                "See the log output above for setup instructions.");
+                "Database connection string is missing. See log output for setup instructions.");
         }
+
+        // ── Step 1: Connect without a target database and create it if missing ──
+        var builder = new MySqlConnectionStringBuilder(connectionString);
+        var targetDatabase = builder.Database;
+        builder.Database = string.Empty; // connect to server root
 
         try
         {
-            await using var connection = new SqlConnection(connectionString);
-            await connection.OpenAsync();
-            logger.LogInformation("✅ Connected to Azure SQL: {Database}", connection.Database);
+            await using var rootConnection = new MySqlConnection(builder.ConnectionString);
+            await rootConnection.OpenAsync();
+            logger.LogInformation("✅ Connected to MySQL server at {Host}", builder.Server);
 
-            await using var cmd = new SqlCommand(CreateUsersTableSql, connection);
-            await cmd.ExecuteNonQueryAsync();
-            logger.LogInformation("✅ dbo.Users table verified / created.");
+            var createDbSql = $"CREATE DATABASE IF NOT EXISTS `{targetDatabase}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;";
+            await using var createDbCmd = new MySqlCommand(createDbSql, rootConnection);
+            await createDbCmd.ExecuteNonQueryAsync();
+            logger.LogInformation("✅ Database '{Database}' verified / created.", targetDatabase);
         }
-        catch (SqlException ex) when (ex.Number == 40613 ||
-                                       ex.Message.Contains("not currently available", StringComparison.OrdinalIgnoreCase))
+        catch (MySqlException ex)
         {
             logger.LogError(ex,
-                "❌ Azure SQL database 'internova_db' is PAUSED or temporarily unavailable (error 40613). " +
-                "Go to Azure Portal → SQL databases → internova_db → Resume, then restart the app.");
-            throw new InvalidOperationException(
-                "Azure SQL database is paused. Resume it in the Azure Portal and try again.", ex);
-        }
-        catch (SqlException ex) when (ex.Message.Contains("Cannot open database", StringComparison.OrdinalIgnoreCase) ||
-                                       ex.Message.Contains("Login failed", StringComparison.OrdinalIgnoreCase))
-        {
-            logger.LogError(ex,
-                "❌ Database 'internova_db' does not exist or credentials are incorrect. " +
-                "Create the database in the Azure Portal before starting the application.");
-            throw new InvalidOperationException(
-                "Database 'internova_db' is not accessible. Create it in the Azure Portal.", ex);
-        }
-        catch (SqlException ex)
-        {
-            logger.LogError(ex,
-                "❌ SQL error {Number} when connecting to Azure SQL. Check your connection string and firewall rules.",
+                "❌ MySQL error {Number}: Could not connect to MySQL server. " +
+                "Ensure MySQL is running locally and your credentials in appsettings.Development.json are correct.",
                 ex.Number);
-            throw new InvalidOperationException(
-                $"SQL error {ex.Number}: {ex.Message}", ex);
+            throw new InvalidOperationException($"Failed to connect to MySQL server: {ex.Message}", ex);
+        }
+
+        // ── Step 2: Connect to the target database and create tables if missing ──
+        try
+        {
+            await using var connection = new MySqlConnection(connectionString);
+            await connection.OpenAsync();
+
+            await using var cmd = new MySqlCommand(CreateUsersTableSql, connection);
+            await cmd.ExecuteNonQueryAsync();
+            logger.LogInformation("✅ Users table verified / created.");
+        }
+        catch (MySqlException ex)
+        {
+            logger.LogError(ex,
+                "❌ MySQL error {Number} when initializing tables in '{Database}'.",
+                ex.Number, targetDatabase);
+            throw new InvalidOperationException($"MySQL error {ex.Number}: {ex.Message}", ex);
         }
     }
 }

@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
+using MySqlConnector;
 
 namespace Internova.Api.Controllers;
 
@@ -16,7 +16,7 @@ public class HealthController(IConfiguration configuration) : ControllerBase
     public IActionResult Ping() => Ok(new { status = "ok" });
 
     /// <summary>
-    /// Verifies that the Azure SQL database is reachable and that dbo.Users exists.
+    /// Verifies that the local MySQL database is reachable and that the Users table exists.
     /// Returns 200 when healthy, 503 when not.
     /// </summary>
     [HttpGet("db")]
@@ -25,8 +25,7 @@ public class HealthController(IConfiguration configuration) : ControllerBase
     public async Task<IActionResult> DbHealth()
     {
         var connectionString = configuration.GetConnectionString("DefaultConnection");
-        if (string.IsNullOrWhiteSpace(connectionString) ||
-            connectionString.Contains("{your_password", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(connectionString))
         {
             return StatusCode(StatusCodes.Status503ServiceUnavailable,
                 new { status = "error", message = "Database connection string is not configured." });
@@ -34,17 +33,20 @@ public class HealthController(IConfiguration configuration) : ControllerBase
 
         try
         {
-            await using var connection = new SqlConnection(connectionString);
+            await using var connection = new MySqlConnection(connectionString);
             await connection.OpenAsync();
 
-            const string sql = "SELECT CASE WHEN OBJECT_ID('dbo.Users','U') IS NOT NULL THEN 1 ELSE 0 END";
-            await using var cmd = new SqlCommand(sql, connection);
-            var tableExists = (int)(await cmd.ExecuteScalarAsync() ?? 0) == 1;
+            const string sql = """
+                SELECT COUNT(*) FROM information_schema.TABLES
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Users'
+                """;
+            await using var cmd = new MySqlCommand(sql, connection);
+            var tableExists = Convert.ToInt64(await cmd.ExecuteScalarAsync() ?? 0) == 1;
 
             if (!tableExists)
             {
                 return StatusCode(StatusCodes.Status503ServiceUnavailable,
-                    new { status = "degraded", message = "Connected to DB but dbo.Users table does not exist." });
+                    new { status = "degraded", message = "Connected to DB but Users table does not exist." });
             }
 
             return Ok(new { status = "healthy", database = connection.Database });

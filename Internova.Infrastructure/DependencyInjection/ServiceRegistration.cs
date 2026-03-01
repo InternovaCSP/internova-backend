@@ -17,14 +17,14 @@ public static class ServiceRegistration
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // --- Database (Azure SQL Server via EF Core) ---
+        // --- Database (local MySQL via EF Core + Pomelo) ---
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException(
                 "Connection string 'DefaultConnection' is not configured. " +
-                "Use dotnet user-secrets to set it.");
+                "Add it to appsettings.Development.json.");
 
         services.AddDbContext<AppDbContext>(options =>
-            options.UseSqlServer(connectionString));
+            options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
         // --- Repositories ---
         services.AddScoped<IUserRepository, UserRepository>();

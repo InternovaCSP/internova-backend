@@ -7,32 +7,33 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ── Startup Guard: Fail fast if secrets are missing ───────────────────────────
+// ── Startup Guard: Fail fast if JWT secrets are missing ──────────────────────
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "";
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "";
 
-bool connectionStringMissing = string.IsNullOrWhiteSpace(connectionString) ||
-    connectionString.Contains("{your_password", StringComparison.OrdinalIgnoreCase);
 bool jwtKeyMissing = string.IsNullOrWhiteSpace(jwtKey) ||
     jwtKey.Contains("{set via", StringComparison.OrdinalIgnoreCase);
 
-if (connectionStringMissing || jwtKeyMissing)
+if (jwtKeyMissing)
 {
     Console.ForegroundColor = ConsoleColor.Red;
     Console.Error.WriteLine("""
 
     ╔══════════════════════════════════════════════════════════════════════╗
-    ║  FATAL: Required secrets are not configured.                        ║
+    ║  FATAL: JWT secrets are not configured.                             ║
     ║  Run the following commands in /Internova.Api before starting:      ║
     ╚══════════════════════════════════════════════════════════════════════╝
 
     dotnet user-secrets init
-    dotnet user-secrets set "ConnectionStrings:DefaultConnection" \
-      "Server=tcp:internovacsp.database.windows.net,1433;Initial Catalog=internova_db;Persist Security Info=False;User ID=internova_CS;Password=YOUR_PASSWORD;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
     dotnet user-secrets set "Jwt:Key" "<generate-a-32+-character-random-string>"
     dotnet user-secrets set "Jwt:Issuer" "Internova"
     dotnet user-secrets set "Jwt:Audience" "InternovaUsers"
+
+    Also ensure appsettings.Development.json contains your MySQL connection string:
+    "ConnectionStrings": {
+      "DefaultConnection": "Server=localhost;Port=3306;Database=internova_db;User=root;Password=YOUR_PASSWORD;"
+    }
 
     """);
     Console.ResetColor();
