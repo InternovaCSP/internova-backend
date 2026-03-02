@@ -21,7 +21,11 @@ public class StudentProfileRepository : IStudentProfileRepository
         _logger = logger;
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Retrieves a single StudentProfile entity matching the provided unique User ID.
+    /// </summary>
+    /// <param name="userId">The unique identifier of the User mapping to the profile.</param>
+    /// <returns>The populated StudentProfile object if found, otherwise null.</returns>
     public async Task<StudentProfile?> GetByUserIdAsync(int userId)
     {
         await using var connection = (MySqlConnection)_connectionFactory.CreateConnection();
@@ -43,7 +47,12 @@ public class StudentProfileRepository : IStudentProfileRepository
         return MapProfile(reader);
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Inserts a new StudentProfile or updates the existing one if it already exists for the User.
+    /// Leverages an atomic MySQL INSERT ... ON DUPLICATE KEY UPDATE query to minimize round-trips.
+    /// </summary>
+    /// <param name="profile">The fully populated StudentProfile object to persist.</param>
+    /// <returns>The freshly persisted profile as stored in the database.</returns>
     public async Task<StudentProfile> UpsertAsync(StudentProfile profile)
     {
         await using var connection = (MySqlConnection)_connectionFactory.CreateConnection();
