@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Internova.Core")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+93814a691e1b194610ce60b4f6a81f7d1d6082a3")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3fab038bad94df01a38fb634b6ae853bf06f9ca0")]
 [assembly: System.Reflection.AssemblyProductAttribute("Internova.Core")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Internova.Core")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
