@@ -31,9 +31,9 @@ if (jwtKeyMissing)
     dotnet user-secrets set "Jwt:Issuer" "Internova"
     dotnet user-secrets set "Jwt:Audience" "InternovaUsers"
 
-    Also ensure appsettings.Development.json contains your MySQL connection string:
+    Also ensure appsettings.Development.json contains your SQL Server connection string:
     "ConnectionStrings": {
-      "DefaultConnection": "Server=localhost;Port=3306;Database=internova_db;User=root;Password=YOUR_PASSWORD;"
+      "DefaultConnection": "Server=(localdb)\\MSSQLLocalDB;Database=internova_db;Trusted_Connection=True;"
     }
 
     """);

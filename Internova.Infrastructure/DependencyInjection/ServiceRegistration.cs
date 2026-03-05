@@ -25,7 +25,7 @@ public static class ServiceRegistration
                 "Add it to appsettings.Development.json.");
 
         services.AddDbContext<AppDbContext>(options =>
-            options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+            options.UseSqlServer(connectionString));
 
         // --- ADO.NET connection factory (reused by raw-SQL repositories) ---
         services.AddScoped<DbConnectionFactory>();
