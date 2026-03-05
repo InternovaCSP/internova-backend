@@ -1,4 +1,4 @@
-using MySqlConnector;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -6,43 +6,12 @@ namespace Internova.Infrastructure.Data;
 
 /// <summary>
 /// Runs once at application startup to:
-/// 1. Verify the local MySQL server is reachable.
+/// 1. Verify the local SQL Server is reachable.
 /// 2. Create the database if it does not exist (idempotent).
 /// 3. Create the Users table if it does not already exist (idempotent).
 /// </summary>
 public static class DatabaseInitializer
 {
-    private const string CreateUsersTableSql = """
-        CREATE TABLE IF NOT EXISTS Users (
-            Id           INT            NOT NULL AUTO_INCREMENT,
-            FullName     VARCHAR(200)   NOT NULL,
-            Email        VARCHAR(320)   NOT NULL,
-            PasswordHash VARCHAR(255)   NOT NULL,
-            Role         VARCHAR(20)    NOT NULL,
-            CreatedAt    DATETIME(6)    NOT NULL DEFAULT (UTC_TIMESTAMP(6)),
-            PRIMARY KEY (Id),
-            UNIQUE INDEX UX_Users_Email (Email),
-            CONSTRAINT CK_Users_Role CHECK (Role IN ('Student','Company','Admin'))
-        );
-        """;
-
-    private const string CreateStudentProfilesTableSql = """
-        CREATE TABLE IF NOT EXISTS StudentProfiles (
-            Id           INT             NOT NULL AUTO_INCREMENT,
-            UserId       INT             NOT NULL,
-            UniversityId VARCHAR(100)    NOT NULL,
-            Department   VARCHAR(200)    NOT NULL,
-            GPA          DECIMAL(4,2)    NOT NULL DEFAULT 0.00,
-            Skills       TEXT            NOT NULL,
-            ResumeUrl    VARCHAR(1024)   NOT NULL,
-            CreatedAt    DATETIME(6)     NOT NULL DEFAULT (UTC_TIMESTAMP(6)),
-            UpdatedAt    DATETIME(6)     NOT NULL DEFAULT (UTC_TIMESTAMP(6)),
-            PRIMARY KEY (Id),
-            UNIQUE INDEX UX_StudentProfiles_UserId (UserId),
-            CONSTRAINT FK_StudentProfiles_Users FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE
-        );
-        """;
-
     public static async Task InitializeAsync(IConfiguration configuration, ILogger logger)
     {
         var connectionString = configuration.GetConnectionString("DefaultConnection");
@@ -51,60 +20,50 @@ public static class DatabaseInitializer
         {
             logger.LogError(
                 "ConnectionStrings:DefaultConnection is not configured. " +
-                "Add it to appsettings.Development.json:\n\n" +
-                "  \"ConnectionStrings\": {{\n" +
-                "    \"DefaultConnection\": \"Server=localhost;Port=3306;Database=internova_db;User=root;Password=YOUR_PASSWORD;\"\n" +
-                "  }}");
+                "Add it to appsettings.Development.json.");
 
             throw new InvalidOperationException(
                 "Database connection string is missing. See log output for setup instructions.");
         }
 
         // ── Step 1: Connect without a target database and create it if missing ──
-        var builder = new MySqlConnectionStringBuilder(connectionString);
-        var targetDatabase = builder.Database;
-        builder.Database = string.Empty; // connect to server root
+        var builder = new SqlConnectionStringBuilder(connectionString);
+        var targetDatabase = builder.InitialCatalog;
+        builder.InitialCatalog = "master"; // connect to master database
 
         try
         {
-            await using var rootConnection = new MySqlConnection(builder.ConnectionString);
-            await rootConnection.OpenAsync();
-            logger.LogInformation("✅ Connected to MySQL server at {Host}", builder.Server);
+            await using var masterConnection = new SqlConnection(builder.ConnectionString);
+            await masterConnection.OpenAsync();
+            logger.LogInformation("✅ Connected to SQL Server master at {DataSource}", builder.DataSource);
 
-            var createDbSql = $"CREATE DATABASE IF NOT EXISTS `{targetDatabase}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;";
-            await using var createDbCmd = new MySqlCommand(createDbSql, rootConnection);
-            await createDbCmd.ExecuteNonQueryAsync();
+            var checkDbSql = $"IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = '{targetDatabase}') CREATE DATABASE [{targetDatabase}];";
+            await using var checkDbCmd = new SqlCommand(checkDbSql, masterConnection);
+            await checkDbCmd.ExecuteNonQueryAsync();
             logger.LogInformation("✅ Database '{Database}' verified / created.", targetDatabase);
         }
-        catch (MySqlException ex)
+        catch (SqlException ex)
         {
             logger.LogError(ex,
-                "❌ MySQL error {Number}: Could not connect to MySQL server. " +
-                "Ensure MySQL is running locally and your credentials in appsettings.Development.json are correct.",
+                "❌ SQL Server error {Number}: Could not connect to SQL Server. " +
+                "Ensure LocalDB is installed and running.",
                 ex.Number);
-            throw new InvalidOperationException($"Failed to connect to MySQL server: {ex.Message}", ex);
+            throw new InvalidOperationException($"Failed to connect to SQL Server: {ex.Message}", ex);
         }
 
-        // ── Step 2: Connect to the target database and create tables if missing ──
+        // ── Step 2: Verify connectivity to the target database ──
         try
         {
-            await using var connection = new MySqlConnection(connectionString);
+            await using var connection = new SqlConnection(connectionString);
             await connection.OpenAsync();
-
-            await using var cmd = new MySqlCommand(CreateUsersTableSql, connection);
-            await cmd.ExecuteNonQueryAsync();
-            logger.LogInformation("✅ Users table verified / created.");
-
-            await using var cmd2 = new MySqlCommand(CreateStudentProfilesTableSql, connection);
-            await cmd2.ExecuteNonQueryAsync();
-            logger.LogInformation("✅ StudentProfiles table verified / created.");
+            logger.LogInformation("✅ Successfully connected to database '{Database}'.", targetDatabase);
         }
-        catch (MySqlException ex)
+        catch (SqlException ex)
         {
             logger.LogError(ex,
-                "❌ MySQL error {Number} when initializing tables in '{Database}'.",
+                "❌ SQL Server error {Number} when connecting to '{Database}'.",
                 ex.Number, targetDatabase);
-            throw new InvalidOperationException($"MySQL error {ex.Number}: {ex.Message}", ex);
+            throw new InvalidOperationException($"SQL Server error {ex.Number}: {ex.Message}", ex);
         }
     }
 }
