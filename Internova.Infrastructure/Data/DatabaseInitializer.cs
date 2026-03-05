@@ -57,6 +57,28 @@ public static class DatabaseInitializer
             await using var connection = new SqlConnection(connectionString);
             await connection.OpenAsync();
             logger.LogInformation("✅ Successfully connected to database '{Database}'.", targetDatabase);
+
+            // ── Create Internship Table if missing ──
+            const string createInternshipTableSql = @"
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Internship')
+                BEGIN
+                    CREATE TABLE Internship (
+                        internship_id INT IDENTITY(1,1) PRIMARY KEY,
+                        company_id INT NOT NULL,
+                        title VARCHAR(255) NOT NULL,
+                        description TEXT,
+                        requirements TEXT,
+                        duration VARCHAR(100),
+                        location VARCHAR(255),
+                        status VARCHAR(50) DEFAULT 'Active' CHECK (status IN ('Active', 'Closed')),
+                        is_published BIT DEFAULT 0,
+                        created_at DATETIME2 DEFAULT GETDATE(),
+                        CONSTRAINT FK_Internship_Company FOREIGN KEY (company_id) REFERENCES [User](user_id)
+                    );
+                END";
+            await using var createInternshipCmd = new SqlCommand(createInternshipTableSql, connection);
+            await createInternshipCmd.ExecuteNonQueryAsync();
+            logger.LogInformation("✅ Internship table verified / created.");
         }
         catch (SqlException ex)
         {
