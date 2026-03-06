@@ -5,6 +5,8 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.HttpOverrides;
 using System.Text;
+using Internova.Api.Authorization;
+using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -103,7 +105,13 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("RequireCompanyApproval", policy =>
+        policy.AddRequirements(new CompanyApprovalRequirement()));
+});
+
+builder.Services.AddScoped<IAuthorizationHandler, CompanyApprovalHandler>();
 
 // CORS — allow Vite dev server to call the API
 builder.Services.AddCors(options =>
@@ -160,3 +168,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+public partial class Program { }
+

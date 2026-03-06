@@ -35,6 +35,7 @@ public class InternshipsController(
     // ─── POST /api/internships ───────────────────────────────────────────────
     [HttpPost]
     [Authorize(Roles = "Company")]
+    [Authorize(Policy = "RequireCompanyApproval")]
     public async Task<IActionResult> Create([FromBody] CreateInternshipDto dto)
     {
         var userIdClaim = User.FindFirstValue("user_id");
