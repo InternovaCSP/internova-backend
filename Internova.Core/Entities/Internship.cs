@@ -16,21 +16,18 @@ public class Internship
     [StringLength(255)]
     public string Title { get; set; } = string.Empty;
 
-    public string Description { get; set; } = string.Empty;
+    public string? Description { get; set; }
 
-    /// <summary>
-    /// Type of internship (e.g., Full-time, Part-time, Remote).
-    /// </summary>
-    public string Type { get; set; } = string.Empty;
+    public string? Requirements { get; set; }
 
-    public string Location { get; set; } = string.Empty;
+    public string? Duration { get; set; }
 
-    public decimal? Stipend { get; set; }
+    public string? Location { get; set; }
 
-    /// <summary>
-    /// Skills required for the internship (comma-separated or JSON string).
-    /// </summary>
-    public string Skills { get; set; } = string.Empty;
+    [StringLength(50)]
+    public string Status { get; set; } = "Active";
+
+    public bool IsPublished { get; set; } = false;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

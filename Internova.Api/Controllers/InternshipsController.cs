@@ -48,10 +48,10 @@ public class InternshipsController(
             CompanyId = companyId,
             Title = dto.Title,
             Description = dto.Description,
-            Type = dto.Type,
+            Duration = dto.Duration,
             Location = dto.Location,
-            Stipend = dto.Stipend,
-            Skills = dto.Skills,
+            Requirements = dto.Requirements,
+            IsPublished = dto.IsPublished,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -82,10 +82,10 @@ public class InternshipsController(
 
         existing.Title = dto.Title;
         existing.Description = dto.Description;
-        existing.Type = dto.Type;
+        existing.Duration = dto.Duration;
         existing.Location = dto.Location;
-        existing.Stipend = dto.Stipend;
-        existing.Skills = dto.Skills;
+        existing.Requirements = dto.Requirements;
+        existing.IsPublished = dto.IsPublished;
 
         var success = await internshipRepository.UpdateAsync(existing);
         if (!success) return StatusCode(500, "Failed to update internship.");

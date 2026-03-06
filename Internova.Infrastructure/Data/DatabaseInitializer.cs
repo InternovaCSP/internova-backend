@@ -58,6 +58,25 @@ public static class DatabaseInitializer
             await connection.OpenAsync();
             logger.LogInformation("✅ Successfully connected to database '{Database}'.", targetDatabase);
 
+            // ── Create Company_Profile Table if missing ──
+            const string createCompanyProfileTableSql = @"
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Company_Profile')
+                BEGIN
+                    CREATE TABLE Company_Profile (
+                        company_id INT PRIMARY KEY,
+                        company_name VARCHAR(255) NOT NULL,
+                        industry VARCHAR(100),
+                        address TEXT,
+                        description TEXT,
+                        website_url VARCHAR(2048),
+                        is_verified BIT DEFAULT 0,
+                        CONSTRAINT FK_Company_User FOREIGN KEY (company_id) REFERENCES [User](user_id) ON DELETE CASCADE
+                    );
+                END";
+            await using var createCompanyProfileCmd = new SqlCommand(createCompanyProfileTableSql, connection);
+            await createCompanyProfileCmd.ExecuteNonQueryAsync();
+            logger.LogInformation("✅ Company_Profile table verified / created.");
+
             // ── Create Internship Table if missing ──
             const string createInternshipTableSql = @"
                 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Internship')
@@ -73,7 +92,7 @@ public static class DatabaseInitializer
                         status VARCHAR(50) DEFAULT 'Active' CHECK (status IN ('Active', 'Closed')),
                         is_published BIT DEFAULT 0,
                         created_at DATETIME2 DEFAULT GETDATE(),
-                        CONSTRAINT FK_Internship_Company FOREIGN KEY (company_id) REFERENCES [User](user_id)
+                        CONSTRAINT FK_Internship_Company FOREIGN KEY (company_id) REFERENCES Company_Profile(company_id)
                     );
                 END";
             await using var createInternshipCmd = new SqlCommand(createInternshipTableSql, connection);
