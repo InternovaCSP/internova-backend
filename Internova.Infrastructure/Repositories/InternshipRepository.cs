@@ -25,8 +25,9 @@ public class InternshipRepository : IInternshipRepository
 
         const string sql = @"
             SELECT internship_id AS Id, company_id AS CompanyId, title AS Title, 
-                   description AS Description, duration AS Type, location AS Location, 
-                   0.0 AS Stipend, requirements AS Skills, created_at AS CreatedAt
+                   description AS Description, duration AS Duration, location AS Location, 
+                   requirements AS Requirements, status AS Status, is_published AS IsPublished, 
+                   created_at AS CreatedAt
             FROM dbo.Internship
             WHERE internship_id = @Id";
 
@@ -47,8 +48,9 @@ public class InternshipRepository : IInternshipRepository
 
         const string sql = @"
             SELECT internship_id AS Id, company_id AS CompanyId, title AS Title, 
-                   description AS Description, duration AS Type, location AS Location, 
-                   0.0 AS Stipend, requirements AS Skills, created_at AS CreatedAt
+                   description AS Description, duration AS Duration, location AS Location, 
+                   requirements AS Requirements, status AS Status, is_published AS IsPublished, 
+                   created_at AS CreatedAt
             FROM dbo.Internship";
 
         await using var cmd = new SqlCommand(sql, connection);
@@ -67,17 +69,19 @@ public class InternshipRepository : IInternshipRepository
         await connection.OpenAsync();
 
         const string sql = @"
-            INSERT INTO dbo.Internship (company_id, title, description, duration, location, requirements, created_at)
-            VALUES (@CompanyId, @Title, @Description, @Type, @Location, @Skills, @CreatedAt);
+            INSERT INTO dbo.Internship (company_id, title, description, duration, location, requirements, status, is_published, created_at)
+            VALUES (@CompanyId, @Title, @Description, @Duration, @Location, @Requirements, @Status, @IsPublished, @CreatedAt);
             SELECT CAST(SCOPE_IDENTITY() as int);";
 
         await using var cmd = new SqlCommand(sql, connection);
         cmd.Parameters.AddWithValue("@CompanyId", internship.CompanyId);
         cmd.Parameters.AddWithValue("@Title", internship.Title);
-        cmd.Parameters.AddWithValue("@Description", internship.Description);
-        cmd.Parameters.AddWithValue("@Type", internship.Type);
-        cmd.Parameters.AddWithValue("@Location", internship.Location);
-        cmd.Parameters.AddWithValue("@Skills", internship.Skills);
+        cmd.Parameters.AddWithValue("@Description", (object?)internship.Description ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@Duration", (object?)internship.Duration ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@Location", (object?)internship.Location ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@Requirements", (object?)internship.Requirements ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@Status", internship.Status);
+        cmd.Parameters.AddWithValue("@IsPublished", internship.IsPublished);
         cmd.Parameters.AddWithValue("@CreatedAt", internship.CreatedAt);
 
         internship.Id = (int)await cmd.ExecuteScalarAsync();
@@ -93,18 +97,22 @@ public class InternshipRepository : IInternshipRepository
             UPDATE dbo.Internship
             SET title = @Title,
                 description = @Description,
-                duration = @Type,
+                duration = @Duration,
                 location = @Location,
-                requirements = @Skills
+                requirements = @Requirements,
+                status = @Status,
+                is_published = @IsPublished
             WHERE internship_id = @Id";
 
         await using var cmd = new SqlCommand(sql, connection);
         cmd.Parameters.AddWithValue("@Id", internship.Id);
         cmd.Parameters.AddWithValue("@Title", internship.Title);
-        cmd.Parameters.AddWithValue("@Description", internship.Description);
-        cmd.Parameters.AddWithValue("@Type", internship.Type);
-        cmd.Parameters.AddWithValue("@Location", internship.Location);
-        cmd.Parameters.AddWithValue("@Skills", internship.Skills);
+        cmd.Parameters.AddWithValue("@Description", (object?)internship.Description ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@Duration", (object?)internship.Duration ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@Location", (object?)internship.Location ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@Requirements", (object?)internship.Requirements ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@Status", internship.Status);
+        cmd.Parameters.AddWithValue("@IsPublished", internship.IsPublished);
 
         var affected = await cmd.ExecuteNonQueryAsync();
         return affected > 0;
@@ -129,11 +137,12 @@ public class InternshipRepository : IInternshipRepository
         Id = r.GetInt32(r.GetOrdinal("Id")),
         CompanyId = r.GetInt32(r.GetOrdinal("CompanyId")),
         Title = r.GetString(r.GetOrdinal("Title")),
-        Description = r.IsDBNull(r.GetOrdinal("Description")) ? string.Empty : r.GetString(r.GetOrdinal("Description")),
-        Type = r.IsDBNull(r.GetOrdinal("Type")) ? string.Empty : r.GetString(r.GetOrdinal("Type")),
-        Location = r.IsDBNull(r.GetOrdinal("Location")) ? string.Empty : r.GetString(r.GetOrdinal("Location")),
-        Stipend = null, // Database schema in azure_sql.txt doesn't have stipend yet, will use 0.0 or nullable
-        Skills = r.IsDBNull(r.GetOrdinal("Skills")) ? string.Empty : r.GetString(r.GetOrdinal("Skills")),
-        CreatedAt = r.IsDBNull(r.GetOrdinal("CreatedAt")) ? DateTime.UtcNow : r.GetDateTime(r.GetOrdinal("CreatedAt"))
+        Description = r.IsDBNull(r.GetOrdinal("Description")) ? null : r.GetString(r.GetOrdinal("Description")),
+        Duration = r.IsDBNull(r.GetOrdinal("Duration")) ? null : r.GetString(r.GetOrdinal("Duration")),
+        Location = r.IsDBNull(r.GetOrdinal("Location")) ? null : r.GetString(r.GetOrdinal("Location")),
+        Requirements = r.IsDBNull(r.GetOrdinal("Requirements")) ? null : r.GetString(r.GetOrdinal("Requirements")),
+        Status = r.GetString(r.GetOrdinal("Status")),
+        IsPublished = r.GetBoolean(r.GetOrdinal("IsPublished")),
+        CreatedAt = r.GetDateTime(r.GetOrdinal("CreatedAt"))
     };
 }
