@@ -1,3 +1,5 @@
+using Internova.Core.Entities;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -9,6 +11,7 @@ namespace Internova.Infrastructure.Data;
 /// 1. Verify the local SQL Server is reachable.
 /// 2. Create the database if it does not exist (idempotent).
 /// 3. Create the Users table if it does not already exist (idempotent).
+/// 4. Seed a default Admin user if none exists.
 /// </summary>
 public static class DatabaseInitializer
 {
@@ -57,6 +60,24 @@ public static class DatabaseInitializer
             await using var connection = new SqlConnection(connectionString);
             await connection.OpenAsync();
             logger.LogInformation("✅ Successfully connected to database '{Database}'.", targetDatabase);
+
+            // ── Create User Table if missing (Safety check) ──
+            const string createUserTableSql = @"
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'User')
+                BEGIN
+                    CREATE TABLE [User] (
+                        user_id INT IDENTITY(1,1) PRIMARY KEY,
+                        full_name VARCHAR(255) NOT NULL,
+                        email VARCHAR(255) UNIQUE NOT NULL,
+                        password_hash VARCHAR(MAX) NOT NULL,
+                        role VARCHAR(50) CHECK (role IN ('Student', 'Company', 'Admin', 'Faculty', 'Organizer')),
+                        is_approved BIT DEFAULT 0,
+                        created_at DATETIME2 DEFAULT GETDATE(),
+                        updated_at DATETIME2 DEFAULT GETDATE()
+                    );
+                END";
+            await using var createUserCmd = new SqlCommand(createUserTableSql, connection);
+            await createUserCmd.ExecuteNonQueryAsync();
 
             // ── Create Company_Profile Table if missing ──
             const string createCompanyProfileTableSql = @"
@@ -121,6 +142,9 @@ public static class DatabaseInitializer
             await using var createCompetitionCmd = new SqlCommand(createCompetitionTableSql, connection);
             await createCompetitionCmd.ExecuteNonQueryAsync();
             logger.LogInformation("✅ Competition table verified / created.");
+
+            // ── Step 3: Seed Admin User ──
+            await SeedAdminUserAsync(connection, logger);
         }
         catch (SqlException ex)
         {
@@ -130,4 +154,48 @@ public static class DatabaseInitializer
             throw new InvalidOperationException($"SQL Server error {ex.Number}: {ex.Message}", ex);
         }
     }
+
+    private static async Task SeedAdminUserAsync(SqlConnection connection, ILogger logger)
+    {
+        const string checkAdminSql = "SELECT COUNT(*) FROM [User] WHERE email = @Email";
+        await using var checkCmd = new SqlCommand(checkAdminSql, connection);
+        checkCmd.Parameters.AddWithValue("@Email", "admin@internova.com");
+        var adminExists = (int)await checkCmd.ExecuteScalarAsync() > 0;
+
+        if (!adminExists)
+        {
+            logger.LogInformation("🚀 Seeding default Admin user...");
+
+            var adminUser = new User
+            {
+                FullName = "System Admin",
+                Email = "admin@internova.com",
+                Role = "Admin",
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var hasher = new PasswordHasher<User>();
+            adminUser.PasswordHash = hasher.HashPassword(adminUser, "Admin@123");
+
+            const string insertAdminSql = @"
+                INSERT INTO [User] (full_name, email, password_hash, role, is_approved, created_at, updated_at)
+                VALUES (@FullName, @Email, @PasswordHash, @Role, 1, @CreatedAt, @CreatedAt)";
+
+            await using var insertCmd = new SqlCommand(insertAdminSql, connection);
+            insertCmd.Parameters.AddWithValue("@FullName", adminUser.FullName);
+            insertCmd.Parameters.AddWithValue("@Email", adminUser.Email);
+            insertCmd.Parameters.AddWithValue("@PasswordHash", adminUser.PasswordHash);
+            insertCmd.Parameters.AddWithValue("@Role", adminUser.Role);
+            insertCmd.Parameters.AddWithValue("@CreatedAt", adminUser.CreatedAt);
+
+            await insertCmd.ExecuteNonQueryAsync();
+            logger.LogInformation("✅ Default Admin user created: admin@internova.com / Admin@123");
+        }
+        else
+        {
+            logger.LogInformation("ℹ️ Default Admin user 'admin@internova.com' already exists.");
+        }
+    }
 }
+
+
