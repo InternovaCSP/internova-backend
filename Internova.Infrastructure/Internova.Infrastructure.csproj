@@ -28,6 +28,7 @@
 
     <!-- Password hashing -->
     <PackageReference Include="BCrypt.Net-Next" Version="4.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="9.0.0" />
   </ItemGroup>
 
 </Project>
