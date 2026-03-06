@@ -70,6 +70,7 @@ public static class DatabaseInitializer
                         description TEXT,
                         website_url VARCHAR(2048),
                         is_verified BIT DEFAULT 0,
+                        status VARCHAR(50) DEFAULT 'Pending',
                         CONSTRAINT FK_Company_User FOREIGN KEY (company_id) REFERENCES [User](user_id) ON DELETE CASCADE
                     );
                 END";
