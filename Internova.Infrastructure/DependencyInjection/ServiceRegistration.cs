@@ -24,6 +24,7 @@ public static class ServiceRegistration
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IStudentProfileRepository, StudentProfileRepository>();
         services.AddScoped<IInternshipRepository, InternshipRepository>();
+        services.AddScoped<ICompetitionRepository, CompetitionRepository>();
 
         // --- Azure Blob Storage service ---
         services.AddScoped<IBlobStorageService, BlobStorageService>();

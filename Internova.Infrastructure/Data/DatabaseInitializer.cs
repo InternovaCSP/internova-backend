@@ -79,6 +79,28 @@ public static class DatabaseInitializer
             await using var createInternshipCmd = new SqlCommand(createInternshipTableSql, connection);
             await createInternshipCmd.ExecuteNonQueryAsync();
             logger.LogInformation("✅ Internship table verified / created.");
+
+            // ── Create Competition Table if missing ──
+            const string createCompetitionTableSql = @"
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Competition')
+                BEGIN
+                    CREATE TABLE Competition (
+                        competition_id INT IDENTITY(1,1) PRIMARY KEY,
+                        organizer_id INT NOT NULL,
+                        title VARCHAR(255) NOT NULL,
+                        description TEXT,
+                        category VARCHAR(100),
+                        eligibility_criteria TEXT,
+                        start_date DATE,
+                        end_date DATE,
+                        registration_link VARCHAR(2048),
+                        is_approved BIT DEFAULT 0,
+                        CONSTRAINT FK_Competition_Organizer FOREIGN KEY (organizer_id) REFERENCES [User](user_id)
+                    );
+                END";
+            await using var createCompetitionCmd = new SqlCommand(createCompetitionTableSql, connection);
+            await createCompetitionCmd.ExecuteNonQueryAsync();
+            logger.LogInformation("✅ Competition table verified / created.");
         }
         catch (SqlException ex)
         {
