@@ -114,6 +114,7 @@ public static class DatabaseInitializer
                         status VARCHAR(50) DEFAULT 'Active' CHECK (status IN ('Active', 'Closed')),
                         is_published BIT DEFAULT 0,
                         created_at DATETIME2 DEFAULT GETDATE(),
+                        company_description NVARCHAR(MAX),
                         CONSTRAINT FK_Internship_Company FOREIGN KEY (company_id) REFERENCES Company_Profile(company_id)
                     );
                 END";

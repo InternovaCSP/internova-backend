@@ -27,7 +27,7 @@ public class InternshipRepository : IInternshipRepository
             SELECT i.internship_id AS Id, i.company_id AS CompanyId, i.title AS Title, 
                    i.description AS Description, i.duration AS Duration, i.location AS Location, 
                    i.requirements AS Requirements, i.status AS Status, i.is_published AS IsPublished, 
-                   i.created_at AS CreatedAt, cp.company_name AS CompanyName
+                   i.created_at AS CreatedAt, cp.company_name AS CompanyName, i.company_description AS CompanyDescription
             FROM dbo.Internship i
             LEFT JOIN dbo.Company_Profile cp ON i.company_id = cp.company_id
             WHERE i.internship_id = @Id";
@@ -51,7 +51,7 @@ public class InternshipRepository : IInternshipRepository
             SELECT i.internship_id AS Id, i.company_id AS CompanyId, i.title AS Title, 
                    i.description AS Description, i.duration AS Duration, i.location AS Location, 
                    i.requirements AS Requirements, i.status AS Status, i.is_published AS IsPublished, 
-                   i.created_at AS CreatedAt, cp.company_name AS CompanyName
+                   i.created_at AS CreatedAt, cp.company_name AS CompanyName, i.company_description AS CompanyDescription
             FROM dbo.Internship i
             LEFT JOIN dbo.Company_Profile cp ON i.company_id = cp.company_id";
 
@@ -146,6 +146,7 @@ public class InternshipRepository : IInternshipRepository
         Status = r.GetString(r.GetOrdinal("Status")),
         IsPublished = r.GetBoolean(r.GetOrdinal("IsPublished")),
         CompanyName = r.IsDBNull(r.GetOrdinal("CompanyName")) ? null : r.GetString(r.GetOrdinal("CompanyName")),
+        CompanyDescription = r.IsDBNull(r.GetOrdinal("CompanyDescription")) ? null : r.GetString(r.GetOrdinal("CompanyDescription")),
         CreatedAt = r.IsDBNull(r.GetOrdinal("CreatedAt")) ? DateTime.UtcNow : r.GetDateTime(r.GetOrdinal("CreatedAt"))
     };
 }
