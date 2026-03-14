@@ -24,12 +24,13 @@ public class InternshipRepository : IInternshipRepository
         await connection.OpenAsync();
 
         const string sql = @"
-            SELECT internship_id AS Id, company_id AS CompanyId, title AS Title, 
-                   description AS Description, duration AS Duration, location AS Location, 
-                   requirements AS Requirements, status AS Status, is_published AS IsPublished, 
-                   created_at AS CreatedAt
-            FROM dbo.Internship
-            WHERE internship_id = @Id";
+            SELECT i.internship_id AS Id, i.company_id AS CompanyId, i.title AS Title, 
+                   i.description AS Description, i.duration AS Duration, i.location AS Location, 
+                   i.requirements AS Requirements, i.status AS Status, i.is_published AS IsPublished, 
+                   i.created_at AS CreatedAt, cp.company_name AS CompanyName
+            FROM dbo.Internship i
+            LEFT JOIN dbo.Company_Profile cp ON i.company_id = cp.company_id
+            WHERE i.internship_id = @Id";
 
         await using var cmd = new SqlCommand(sql, connection);
         cmd.Parameters.AddWithValue("@Id", id);
@@ -47,11 +48,12 @@ public class InternshipRepository : IInternshipRepository
         await connection.OpenAsync();
 
         const string sql = @"
-            SELECT internship_id AS Id, company_id AS CompanyId, title AS Title, 
-                   description AS Description, duration AS Duration, location AS Location, 
-                   requirements AS Requirements, status AS Status, is_published AS IsPublished, 
-                   created_at AS CreatedAt
-            FROM dbo.Internship";
+            SELECT i.internship_id AS Id, i.company_id AS CompanyId, i.title AS Title, 
+                   i.description AS Description, i.duration AS Duration, i.location AS Location, 
+                   i.requirements AS Requirements, i.status AS Status, i.is_published AS IsPublished, 
+                   i.created_at AS CreatedAt, cp.company_name AS CompanyName
+            FROM dbo.Internship i
+            LEFT JOIN dbo.Company_Profile cp ON i.company_id = cp.company_id";
 
         await using var cmd = new SqlCommand(sql, connection);
         await using var reader = await cmd.ExecuteReaderAsync();
@@ -143,6 +145,7 @@ public class InternshipRepository : IInternshipRepository
         Requirements = r.IsDBNull(r.GetOrdinal("Requirements")) ? null : r.GetString(r.GetOrdinal("Requirements")),
         Status = r.GetString(r.GetOrdinal("Status")),
         IsPublished = r.GetBoolean(r.GetOrdinal("IsPublished")),
-        CreatedAt = r.GetDateTime(r.GetOrdinal("CreatedAt"))
+        CompanyName = r.IsDBNull(r.GetOrdinal("CompanyName")) ? null : r.GetString(r.GetOrdinal("CompanyName")),
+        CreatedAt = r.IsDBNull(r.GetOrdinal("CreatedAt")) ? DateTime.UtcNow : r.GetDateTime(r.GetOrdinal("CreatedAt"))
     };
 }

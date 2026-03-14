@@ -72,6 +72,30 @@ IF NOT EXISTS (SELECT 1 FROM Internship WHERE title = 'Junior Software Engineer'
     INSERT INTO Internship (company_id, title, description, duration, location, status, is_published, created_at)
     VALUES (@CompanyTechId, 'Junior Software Engineer', 'Cloud-based apps.', '6 months', 'Remote', 'Active', 1, GETDATE());
 
+-- New Internship 1: TechCorp
+IF NOT EXISTS (SELECT 1 FROM Internship WHERE title = 'Software Engineering Intern' AND company_id = @CompanyTechId)
+    INSERT INTO Internship (company_id, title, description, duration, location, status, is_published, created_at)
+    VALUES (@CompanyTechId, 'Software Engineering Intern', 'Backend development with .NET.', '3 months', 'Hybrid', 'Active', 1, GETDATE());
+
+-- New Internship 2: DesignStudio X
+IF NOT EXISTS (SELECT 1 FROM Internship WHERE title = 'UX Design Intern' AND company_id = @CompanyDesignId)
+    INSERT INTO Internship (company_id, title, description, duration, location, status, is_published, created_at)
+    VALUES (@CompanyDesignId, 'UX Design Intern', 'Modern UI/UX design workflows.', '4 months', 'Remote', 'Active', 1, GETDATE());
+
+-- New Internship 3: TechCorp
+IF NOT EXISTS (SELECT 1 FROM Internship WHERE title = 'Data Science Intern' AND company_id = @CompanyTechId)
+    INSERT INTO Internship (company_id, title, description, duration, location, status, is_published, created_at)
+    VALUES (@CompanyTechId, 'Data Science Intern', 'Analyzing platform metrics.', '6 months', 'On-site', 'Active', 1, GETDATE());
+
+-- New Internship 4: DesignStudio X
+IF NOT EXISTS (SELECT 1 FROM Internship WHERE title = 'Frontend Developer Intern' AND company_id = @CompanyDesignId)
+    INSERT INTO Internship (company_id, title, description, duration, location, status, is_published, created_at)
+    VALUES (@CompanyDesignId, 'Frontend Developer Intern', 'React and Tailwind styling.', '3 months', 'Remote', 'Active', 1, GETDATE());
+
+-- ── 5b. Backfill missing CreatedAt to prevent backend crashes ──
+UPDATE Internship SET created_at = GETDATE() WHERE created_at IS NULL;
+UPDATE Internship SET status = 'Active' WHERE status IS NULL;
+
 DECLARE @InternshipId INT = (SELECT internship_id FROM Internship WHERE title = 'Junior Software Engineer' AND company_id = @CompanyTechId);
 
 -- ── 6. Seed Transactions ──

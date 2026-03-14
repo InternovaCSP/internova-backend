@@ -28,6 +28,8 @@ public class Internship
     public string Status { get; set; } = "Active";
 
     public bool IsPublished { get; set; } = false;
+    
+    public string? CompanyName { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
