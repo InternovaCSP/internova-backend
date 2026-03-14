@@ -20,6 +20,14 @@ public class AdminCompaniesController(
         return Ok(pendingCompanies);
     }
 
+    // ─── GET /api/admin/companies ──────────────────────────────────────────────
+    [HttpGet]
+    public async Task<IActionResult> GetAll()
+    {
+        var companies = await companyRepository.GetAllCompaniesAsync();
+        return Ok(companies);
+    }
+
     // ─── PATCH /api/admin/companies/{id}/status ────────────────────────────────
     [HttpPatch("{id}/status")]
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateStatusRequest request)

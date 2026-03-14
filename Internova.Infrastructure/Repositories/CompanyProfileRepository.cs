@@ -63,6 +63,28 @@ public class CompanyProfileRepository : ICompanyProfileRepository
         return companies;
     }
 
+    public async Task<IEnumerable<CompanyProfile>> GetAllCompaniesAsync()
+    {
+        var companies = new List<CompanyProfile>();
+        await using var connection = (SqlConnection)_connectionFactory.CreateConnection();
+        await connection.OpenAsync();
+
+        const string sql = @"
+            SELECT company_id AS CompanyId, company_name AS CompanyName, industry AS Industry, 
+                   address AS Address, description AS Description, website_url AS WebsiteUrl, 
+                   is_verified AS IsVerified, status AS Status
+            FROM dbo.Company_Profile";
+
+        await using var cmd = new SqlCommand(sql, connection);
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            companies.Add(MapCompanyProfile(reader));
+        }
+
+        return companies;
+    }
+
     public async Task<bool> UpdateStatusAsync(int companyId, CompanyStatus status)
     {
         await using var connection = (SqlConnection)_connectionFactory.CreateConnection();
