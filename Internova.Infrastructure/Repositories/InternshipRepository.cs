@@ -65,6 +65,33 @@ public class InternshipRepository : IInternshipRepository
         return internships;
     }
 
+    public async Task<IEnumerable<Internship>> GetByCompanyIdAsync(int companyId)
+    {
+        var internships = new List<Internship>();
+        await using var connection = (SqlConnection)_connectionFactory.CreateConnection();
+        await connection.OpenAsync();
+
+        const string sql = @"
+            SELECT i.internship_id AS Id, i.company_id AS CompanyId, i.title AS Title, 
+                   i.description AS Description, i.duration AS Duration, i.location AS Location, 
+                   i.requirements AS Requirements, i.status AS Status, i.is_published AS IsPublished, 
+                   i.created_at AS CreatedAt, cp.company_name AS CompanyName, i.company_description AS CompanyDescription
+            FROM dbo.Internship i
+            LEFT JOIN dbo.Company_Profile cp ON i.company_id = cp.company_id
+            WHERE i.company_id = @CompanyId";
+
+        await using var cmd = new SqlCommand(sql, connection);
+        cmd.Parameters.AddWithValue("@CompanyId", companyId);
+
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            internships.Add(MapInternship(reader));
+        }
+
+        return internships;
+    }
+
     public async Task<Internship> AddAsync(Internship internship)
     {
         await using var connection = (SqlConnection)_connectionFactory.CreateConnection();

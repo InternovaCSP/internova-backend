@@ -32,6 +32,27 @@ public class UserRepository(DbConnectionFactory connectionFactory) : IUserReposi
     }
 
     /// <inheritdoc />
+    public async Task<User?> GetByIdAsync(int id)
+    {
+        await using var connection = (SqlConnection)_connectionFactory.CreateConnection();
+        await connection.OpenAsync();
+
+        const string sql = """
+            SELECT TOP 1 user_id, full_name, email, password_hash, role, created_at
+            FROM dbo.[User]
+            WHERE user_id = @Id;
+            """;
+
+        await using var cmd = new SqlCommand(sql, connection);
+        cmd.Parameters.AddWithValue("@Id", id);
+
+        await using var reader = await cmd.ExecuteReaderAsync();
+        if (!await reader.ReadAsync()) return null;
+
+        return MapUser(reader);
+    }
+
+    /// <inheritdoc />
     public async Task<int> CreateAsync(User user)
     {
         await using var connection = (SqlConnection)_connectionFactory.CreateConnection();
