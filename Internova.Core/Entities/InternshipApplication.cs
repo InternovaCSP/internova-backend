@@ -14,4 +14,5 @@ public class InternshipApplication
     // Navigation properties (not used for ADO.NET but good for clarity)
     public string? InternshipTitle { get; set; }
     public string? CompanyName { get; set; }
+    public string? StudentName { get; set; }
 }
