@@ -1,0 +1,26 @@
+name: Deploy .NET 10 Backend
+
+on:
+  push:
+    branches: [ "staging" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: dotnet publish
+        run: dotnet publish Internova.Api/Internova.Api.csproj -c Release -o ${{env.DOTNET_ROOT}}/myapp
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'internovaServer'
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ${{env.DOTNET_ROOT}}/myapp
