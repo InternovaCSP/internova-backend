@@ -144,6 +144,45 @@ public static class DatabaseInitializer
             await createCompetitionCmd.ExecuteNonQueryAsync();
             logger.LogInformation("✅ Competition table verified / created.");
 
+            // ── Ensure 'company_description' exists in Internship (Migration) ──
+            const string migrateInternshipTableSql = @"
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Internship') AND name = 'company_description')
+                BEGIN
+                    ALTER TABLE Internship ADD company_description NVARCHAR(MAX);
+                END";
+            await using var migrateInternshipCmd = new SqlCommand(migrateInternshipTableSql, connection);
+            await migrateInternshipCmd.ExecuteNonQueryAsync();
+            logger.LogInformation("✅ Internship schema migration verified.");
+
+            // ── Create Internship_Application Table if missing ──
+            const string createApplicationTableSql = @"
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Internship_Application')
+                BEGIN
+                    CREATE TABLE Internship_Application (
+                        application_id INT IDENTITY(1,1) PRIMARY KEY,
+                        internship_id INT NOT NULL,
+                        student_id INT NOT NULL,
+                        status VARCHAR(50) DEFAULT 'Applied' CHECK (status IN ('Applied', 'Shortlisted', 'Interviewing', 'Selected', 'Rejected')),
+                        applied_at DATETIME2 DEFAULT GETDATE(),
+                        updated_at DATETIME2 DEFAULT GETDATE(),
+                        CONSTRAINT FK_Application_Internship FOREIGN KEY (internship_id) REFERENCES Internship(internship_id),
+                        CONSTRAINT FK_Application_Student FOREIGN KEY (student_id) REFERENCES [User](user_id)
+                    );
+                END";
+            await using var createApplicationCmd = new SqlCommand(createApplicationTableSql, connection);
+            await createApplicationCmd.ExecuteNonQueryAsync();
+            logger.LogInformation("✅ Internship_Application table verified / created.");
+
+            // ── Ensure 'updated_at' exists (Migration) ──
+            const string migrateApplicationTableSql = @"
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Internship_Application') AND name = 'updated_at')
+                BEGIN
+                    ALTER TABLE Internship_Application ADD updated_at DATETIME2 DEFAULT GETDATE();
+                END";
+            await using var migrateApplicationCmd = new SqlCommand(migrateApplicationTableSql, connection);
+            await migrateApplicationCmd.ExecuteNonQueryAsync();
+            logger.LogInformation("✅ Internship_Application schema migration verified.");
+
             // ── Step 3: Seed Admin User ──
             await SeedAdminUserAsync(connection, logger);
         }
