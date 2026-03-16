@@ -144,6 +144,25 @@ public static class DatabaseInitializer
             await createCompetitionCmd.ExecuteNonQueryAsync();
             logger.LogInformation("✅ Competition table verified / created.");
 
+            // ── Create Internship_Application Table if missing ──
+            const string createApplicationTableSql = @"
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Internship_Application')
+                BEGIN
+                    CREATE TABLE Internship_Application (
+                        application_id INT IDENTITY(1,1) PRIMARY KEY,
+                        internship_id INT NOT NULL,
+                        student_id INT NOT NULL,
+                        status VARCHAR(50) DEFAULT 'Applied' CHECK (status IN ('Applied', 'Shortlisted', 'Interviewing', 'Selected', 'Rejected')),
+                        applied_at DATETIME2 DEFAULT GETDATE(),
+                        updated_at DATETIME2 DEFAULT GETDATE(),
+                        CONSTRAINT FK_Application_Internship FOREIGN KEY (internship_id) REFERENCES Internship(internship_id),
+                        CONSTRAINT FK_Application_Student FOREIGN KEY (student_id) REFERENCES [User](user_id)
+                    );
+                END";
+            await using var createApplicationCmd = new SqlCommand(createApplicationTableSql, connection);
+            await createApplicationCmd.ExecuteNonQueryAsync();
+            logger.LogInformation("✅ Internship_Application table verified / created.");
+
             // ── Step 3: Seed Admin User ──
             await SeedAdminUserAsync(connection, logger);
         }

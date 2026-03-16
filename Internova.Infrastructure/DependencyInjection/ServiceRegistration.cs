@@ -24,6 +24,7 @@ public static class ServiceRegistration
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IStudentProfileRepository, StudentProfileRepository>();
         services.AddScoped<IInternshipRepository, InternshipRepository>();
+        services.AddScoped<IInternshipApplicationRepository, InternshipApplicationRepository>();
         services.AddScoped<ICompetitionRepository, CompetitionRepository>();
         services.AddScoped<ICompanyProfileRepository, CompanyProfileRepository>();
 
