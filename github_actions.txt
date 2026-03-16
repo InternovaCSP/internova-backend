@@ -1,0 +1,16 @@
+GITHUB ACTIONS
+• Trigger Mechanism: Ensures that new feature contributions, such as the Internship Re-
+cruitment or academic innovation modules, do not introduce breaking changes to the main
+development line.
+• Checkout Code: Uses the actions/checkout action to pull the latest repository source
+code into the virtual runner environment.
+• Setup .NET 10 SDK: Configures the environment with the specific .NET 10 SDK required
+for the project, ensuring consistency between local development and cloud build.
+• Restore Dependencies: Executes dotnet restore to fetch all necessary NuGet pack-
+ages, resolving external dependencies before the compilation phase.
+• Build (Release Mode): Compiles the project using the Release configuration. This pro-
+duces an optimized, production-ready binary and catches strict compile-time errors that
+might be missed in debug builds.
+• Step 5: Automated Testing: A modular step intended for executing unit and integration
+tests (e.g., xUnit). It ensures that core logic, such as Role-Based Access Control (RBAC)
+and application status transitions, remains functional.

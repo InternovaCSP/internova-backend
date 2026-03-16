@@ -5,10 +5,12 @@ namespace Internova.Core.DTOs;
 /// <summary>Payload for POST /api/auth/register.</summary>
 public class RegisterRequest
 {
+    /// <summary>The user's real name or preferred display name.</summary>
     [Required]
     [MaxLength(200)]
     public string FullName { get; set; } = string.Empty;
 
+    /// <summary>Must be a valid email address; acts as the primary login credential.</summary>
     [Required]
     [EmailAddress]
     [MaxLength(320)]

@@ -3,36 +3,40 @@ using Internova.Infrastructure.DependencyInjection;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.HttpOverrides;
 using System.Text;
+using Internova.Api.Authorization;
+using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ── Startup Guard: Fail fast if secrets are missing ───────────────────────────
+// ── Startup Guard: Fail fast if JWT secrets are missing ──────────────────────
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "";
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "";
 
-bool connectionStringMissing = string.IsNullOrWhiteSpace(connectionString) ||
-    connectionString.Contains("{your_password", StringComparison.OrdinalIgnoreCase);
 bool jwtKeyMissing = string.IsNullOrWhiteSpace(jwtKey) ||
     jwtKey.Contains("{set via", StringComparison.OrdinalIgnoreCase);
 
-if (connectionStringMissing || jwtKeyMissing)
+if (jwtKeyMissing)
 {
     Console.ForegroundColor = ConsoleColor.Red;
     Console.Error.WriteLine("""
 
     ╔══════════════════════════════════════════════════════════════════════╗
-    ║  FATAL: Required secrets are not configured.                        ║
+    ║  FATAL: JWT secrets are not configured.                             ║
     ║  Run the following commands in /Internova.Api before starting:      ║
     ╚══════════════════════════════════════════════════════════════════════╝
 
     dotnet user-secrets init
-    dotnet user-secrets set "ConnectionStrings:DefaultConnection" \
-      "Server=tcp:internovacsp.database.windows.net,1433;Initial Catalog=internova_db;Persist Security Info=False;User ID=internova_CS;Password=YOUR_PASSWORD;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
     dotnet user-secrets set "Jwt:Key" "<generate-a-32+-character-random-string>"
     dotnet user-secrets set "Jwt:Issuer" "Internova"
     dotnet user-secrets set "Jwt:Audience" "InternovaUsers"
+
+    Also ensure appsettings.Development.json contains your SQL Server connection string:
+    "ConnectionStrings": {
+      "DefaultConnection": "Server=(localdb)\\MSSQLLocalDB;Database=internova_db;Trusted_Connection=True;"
+    }
 
     """);
     Console.ResetColor();
@@ -41,7 +45,11 @@ if (connectionStringMissing || jwtKeyMissing)
 
 // ── Services ──────────────────────────────────────────────────────────────────
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+    });
 
 // Swagger / OpenAPI with JWT Bearer support
 builder.Services.AddEndpointsApiExplorer();
@@ -101,11 +109,21 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("RequireCompanyApproval", policy =>
+        policy.AddRequirements(new CompanyApprovalRequirement()));
+});
+
+builder.Services.AddScoped<IAuthorizationHandler, CompanyApprovalHandler>();
 
 // CORS — allow Vite dev server to call the API
+// CORS — dynamic configuration
+var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+
 builder.Services.AddCors(options =>
 {
+    // Local dev policy
     options.AddPolicy("ViteDev", policy =>
         policy.WithOrigins(
                 "http://localhost:5173",   // Vite dev server (default)
@@ -114,6 +132,25 @@ builder.Services.AddCors(options =>
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials());
+
+    // Deployed policy driven by configuration
+    options.AddPolicy("DeployedCorsPolicy", policy =>
+    {
+        if (allowedOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        }
+        else
+        {
+            // Defensive default if deployed without origins set (Azure portal config)
+            policy.AllowAnyOrigin()
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        }
+    });
 });
 
 // Infrastructure (ADO.NET + repositories)
@@ -135,10 +172,28 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 
-app.UseHttpsRedirection();
+// Configure Forwarded Headers to handle SSL termination in Azure/proxies
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
+// Only use HTTPS redirection in production/Azure. 
+// Locally, the 'http' profile triggers a warning if this is active.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 // CORS must be placed before Authentication/Authorization
-app.UseCors("ViteDev");
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors("ViteDev");
+}
+else
+{
+    app.UseCors("DeployedCorsPolicy");
+}
 
 // Authentication must come before Authorization
 app.UseAuthentication();
@@ -147,3 +202,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+public partial class Program { }
+
