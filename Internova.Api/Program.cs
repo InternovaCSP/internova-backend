@@ -105,8 +105,12 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 
 // CORS — allow Vite dev server to call the API
+// CORS — dynamic configuration
+var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+
 builder.Services.AddCors(options =>
 {
+    // Local dev policy
     options.AddPolicy("ViteDev", policy =>
         policy.WithOrigins(
                 "http://localhost:5173",   // Vite dev server (default)
@@ -115,6 +119,25 @@ builder.Services.AddCors(options =>
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials());
+
+    // Deployed policy driven by configuration
+    options.AddPolicy("DeployedCorsPolicy", policy =>
+    {
+        if (allowedOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        }
+        else
+        {
+            // Defensive default if deployed without origins set (Azure portal config)
+            policy.AllowAnyOrigin()
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        }
+    });
 });
 
 // Infrastructure (ADO.NET + repositories)
@@ -139,7 +162,14 @@ app.UseSwaggerUI(c =>
 app.UseHttpsRedirection();
 
 // CORS must be placed before Authentication/Authorization
-app.UseCors("ViteDev");
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors("ViteDev");
+}
+else
+{
+    app.UseCors("DeployedCorsPolicy");
+}
 
 // Authentication must come before Authorization
 app.UseAuthentication();
