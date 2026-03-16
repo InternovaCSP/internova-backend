@@ -3,7 +3,10 @@ using Internova.Infrastructure.DependencyInjection;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.HttpOverrides;
 using System.Text;
+using Internova.Api.Authorization;
+using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,9 +33,9 @@ if (jwtKeyMissing)
     dotnet user-secrets set "Jwt:Issuer" "Internova"
     dotnet user-secrets set "Jwt:Audience" "InternovaUsers"
 
-    Also ensure appsettings.Development.json contains your MySQL connection string:
+    Also ensure appsettings.Development.json contains your SQL Server connection string:
     "ConnectionStrings": {
-      "DefaultConnection": "Server=localhost;Port=3306;Database=internova_db;User=root;Password=YOUR_PASSWORD;"
+      "DefaultConnection": "Server=(localdb)\\MSSQLLocalDB;Database=internova_db;Trusted_Connection=True;"
     }
 
     """);
@@ -42,7 +45,11 @@ if (jwtKeyMissing)
 
 // ── Services ──────────────────────────────────────────────────────────────────
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+    });
 
 // Swagger / OpenAPI with JWT Bearer support
 builder.Services.AddEndpointsApiExplorer();
@@ -102,7 +109,13 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("RequireCompanyApproval", policy =>
+        policy.AddRequirements(new CompanyApprovalRequirement()));
+});
+
+builder.Services.AddScoped<IAuthorizationHandler, CompanyApprovalHandler>();
 
 // CORS — allow Vite dev server to call the API
 // CORS — dynamic configuration
@@ -159,7 +172,18 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 
-app.UseHttpsRedirection();
+// Configure Forwarded Headers to handle SSL termination in Azure/proxies
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
+// Only use HTTPS redirection in production/Azure. 
+// Locally, the 'http' profile triggers a warning if this is active.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 // CORS must be placed before Authentication/Authorization
 if (app.Environment.IsDevelopment())
@@ -178,3 +202,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+public partial class Program { }
+

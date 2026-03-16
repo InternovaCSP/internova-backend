@@ -25,7 +25,12 @@ public class AuthController(
 
     // ─── POST /api/auth/register ──────────────────────────────────────────────
 
-    /// <summary>Register a new Student or Company account.</summary>
+    /// <summary>
+    /// Registers a new Student or Company account in the system.
+    /// Validates uniqueness of the email and hashes the password securely before saving.
+    /// </summary>
+    /// <param name="request">The registration payload carrying FullName, Email, Password, and Role.</param>
+    /// <returns>A 201 Created response containing the new user ID, or a 400/409 on error.</returns>
     [HttpPost("register")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -62,7 +67,12 @@ public class AuthController(
 
     // ─── POST /api/auth/login ─────────────────────────────────────────────────
 
-    /// <summary>Authenticate with email and password; returns a JWT.</summary>
+    /// <summary>
+    /// Authenticates a user using their email and password.
+    /// Upon successful verification, generates and returns a cryptographically signed JWT.
+    /// </summary>
+    /// <param name="request">The login payload carrying Email and Password.</param>
+    /// <returns>A 200 OK containing the AuthResponse (JWT token, UserId, Role, Email) or 401 Unauthorized.</returns>
     [HttpPost("login")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -110,6 +120,12 @@ public class AuthController(
 
     // ─── JWT Generation ───────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Generates a signed JSON Web Token (JWT) encapsulating the user's primary identity claims.
+    /// Uses HMAC SHA-256 for signing, configured via the Jwt:Key setting.
+    /// </summary>
+    /// <param name="user">The fully authenticated User entity.</param>
+    /// <returns>A base64 encoded JWT string.</returns>
     private string GenerateJwt(User user)
     {
         var key = configuration["Jwt:Key"]

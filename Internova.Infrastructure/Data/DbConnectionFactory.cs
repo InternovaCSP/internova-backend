@@ -1,5 +1,5 @@
 using System.Data;
-using MySqlConnector;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 
 namespace Internova.Infrastructure.Data;
@@ -14,6 +14,6 @@ public class DbConnectionFactory(IConfiguration configuration)
 
     public IDbConnection CreateConnection()
     {
-        return new MySqlConnection(_connectionString);
+        return new SqlConnection(_connectionString);
     }
 }

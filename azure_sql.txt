@@ -32,6 +32,7 @@ CREATE TABLE Company_Profile (
     description TEXT,
     website_url VARCHAR(2048),
     is_verified BIT DEFAULT 0,
+    status VARCHAR(50) DEFAULT 'Pending',
     CONSTRAINT FK_Company_User FOREIGN KEY (company_id) REFERENCES [User](user_id) ON DELETE CASCADE
 );
 
@@ -75,6 +76,8 @@ CREATE TABLE Internship (
     location VARCHAR(255),
     status VARCHAR(50) DEFAULT 'Active' CHECK (status IN ('Active', 'Closed')),
     is_published BIT DEFAULT 0,
+    created_at DATETIME2 DEFAULT GETDATE(),
+    company_description NVARCHAR(MAX),
     CONSTRAINT FK_Internship_Company FOREIGN KEY (company_id) REFERENCES Company_Profile(company_id)
 );
 
