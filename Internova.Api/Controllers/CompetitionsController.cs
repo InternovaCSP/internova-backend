@@ -40,7 +40,8 @@ public class CompetitionsController : ControllerBase
                 StartDate = c.StartDate,
                 EndDate = c.EndDate,
                 RegistrationLink = c.RegistrationLink,
-                IsApproved = c.IsApproved
+                IsApproved = c.IsApproved,
+                OrganizerName = c.OrganizerName
             });
 
             return Ok(dtos);
