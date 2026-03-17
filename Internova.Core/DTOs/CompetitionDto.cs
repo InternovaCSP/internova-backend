@@ -12,6 +12,7 @@ public class CompetitionDto
     public DateTime? EndDate { get; set; }
     public string? RegistrationLink { get; set; }
     public bool IsApproved { get; set; }
+    public string? OrganizerName { get; set; }
 }
 
 public class CreateCompetitionDto
