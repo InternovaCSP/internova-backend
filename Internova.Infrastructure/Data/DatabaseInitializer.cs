@@ -99,6 +99,25 @@ public static class DatabaseInitializer
             await createCompanyProfileCmd.ExecuteNonQueryAsync();
             logger.LogInformation("✅ Company_Profile table verified / created.");
 
+            // ── Create Student_Profile Table if missing ──
+            const string createStudentProfileTableSql = @"
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Student_Profile')
+                BEGIN
+                    CREATE TABLE Student_Profile (
+                        student_id INT PRIMARY KEY,
+                        university_id VARCHAR(50),
+                        department VARCHAR(255),
+                        gpa DECIMAL(3, 2),
+                        skills TEXT,
+                        resume_link VARCHAR(2048),
+                        created_at DATETIME2 DEFAULT GETDATE(),
+                        CONSTRAINT FK_Student_User FOREIGN KEY (student_id) REFERENCES [User](user_id) ON DELETE CASCADE
+                    );
+                END";
+            await using var createStudentProfileCmd = new SqlCommand(createStudentProfileTableSql, connection);
+            await createStudentProfileCmd.ExecuteNonQueryAsync();
+            logger.LogInformation("✅ Student_Profile table verified / created.");
+
             // ── Create Internship Table if missing ──
             const string createInternshipTableSql = @"
                 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Internship')
