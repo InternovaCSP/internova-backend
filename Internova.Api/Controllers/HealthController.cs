@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using MySqlConnector;
+using Microsoft.Data.SqlClient;
 
 namespace Internova.Api.Controllers;
 
@@ -16,7 +16,7 @@ public class HealthController(IConfiguration configuration) : ControllerBase
     public IActionResult Ping() => Ok(new { status = "ok" });
 
     /// <summary>
-    /// Verifies that the local MySQL database is reachable and that the Users table exists.
+    /// Verifies that the local SQL Server database is reachable and that the Users table exists.
     /// Returns 200 when healthy, 503 when not.
     /// </summary>
     [HttpGet("db")]
@@ -33,20 +33,17 @@ public class HealthController(IConfiguration configuration) : ControllerBase
 
         try
         {
-            await using var connection = new MySqlConnection(connectionString);
+            await using var connection = new SqlConnection(connectionString);
             await connection.OpenAsync();
 
-            const string sql = """
-                SELECT COUNT(*) FROM information_schema.TABLES
-                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Users'
-                """;
-            await using var cmd = new MySqlCommand(sql, connection);
-            var tableExists = Convert.ToInt64(await cmd.ExecuteScalarAsync() ?? 0) == 1;
+            const string sql = "SELECT COUNT(*) FROM sys.tables WHERE name = 'User'";
+            await using var cmd = new SqlCommand(sql, connection);
+            var tableExists = Convert.ToInt32(await cmd.ExecuteScalarAsync() ?? 0) >= 1;
 
             if (!tableExists)
             {
                 return StatusCode(StatusCodes.Status503ServiceUnavailable,
-                    new { status = "degraded", message = "Connected to DB but Users table does not exist." });
+                    new { status = "degraded", message = "Connected to DB but User table does not exist." });
             }
 
             return Ok(new { status = "healthy", database = connection.Database });
