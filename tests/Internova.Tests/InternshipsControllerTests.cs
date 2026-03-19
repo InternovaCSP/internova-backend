@@ -13,14 +13,22 @@ namespace Internova.Tests;
 public class InternshipsControllerTests
 {
     private readonly Mock<IInternshipRepository> _repoMock;
+    private readonly Mock<ICompanyProfileRepository> _companyRepoMock;
+    private readonly Mock<IUserRepository> _userRepoMock;
     private readonly Mock<ILogger<InternshipsController>> _loggerMock;
     private readonly InternshipsController _controller;
 
     public InternshipsControllerTests()
     {
         _repoMock = new Mock<IInternshipRepository>();
+        _companyRepoMock = new Mock<ICompanyProfileRepository>();
+        _userRepoMock = new Mock<IUserRepository>();
         _loggerMock = new Mock<ILogger<InternshipsController>>();
-        _controller = new InternshipsController(_repoMock.Object, _loggerMock.Object);
+        _controller = new InternshipsController(
+            _repoMock.Object, 
+            _companyRepoMock.Object, 
+            _userRepoMock.Object, 
+            _loggerMock.Object);
     }
 
     private void SetUserContext(int userId, string role)
@@ -43,7 +51,10 @@ public class InternshipsControllerTests
     public async Task GetAll_ReturnsOkWithList()
     {
         // Arrange
-        var internships = new List<Internship> { new Internship { Id = 1, Title = "Test" } };
+        var internships = new List<Internship> 
+        { 
+            new Internship { Id = 1, Title = "Test", Status = "Active", IsPublished = true } 
+        };
         _repoMock.Setup(r => r.GetAllAsync()).ReturnsAsync(internships);
 
         // Act
