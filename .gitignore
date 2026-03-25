@@ -3,6 +3,21 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
+# ── Security: NEVER commit secrets ───────────────────────────────────────────
+# ASP.NET user-secrets file (stored locally in ~/.microsoft/usersecrets/)
+secrets.json
+# Environment files
+.env
+.env.*
+!.env.example
+# macOS metadata
+.DS_Store
+**/.DS_Store
+# Azure publish profiles (contain credentials)
+*.PublishSettings
+*.pubxml.user
+# ─────────────────────────────────────────────────────────────────────────────
+
 # User-specific files
 *.rsuser
 *.suo

@@ -1,14 +1,11 @@
-using System.Data;
 using Internova.Core.Entities;
 using Internova.Core.Interfaces;
 using Internova.Infrastructure.Data;
-using MySql.Data.MySqlClient;
+using Microsoft.Data.SqlClient;
 
 namespace Internova.Infrastructure.Repositories;
 
-/// <summary>
-/// ADO.NET implementation of IUserRepository.
-/// </summary>
+/// <summary>Raw ADO.NET implementation of IUserRepository.</summary>
 public class UserRepository(DbConnectionFactory connectionFactory) : IUserRepository
 {
     private readonly DbConnectionFactory _connectionFactory = connectionFactory;
@@ -16,56 +13,75 @@ public class UserRepository(DbConnectionFactory connectionFactory) : IUserReposi
     /// <inheritdoc />
     public async Task<User?> GetByEmailAsync(string email)
     {
-        using var connection = _connectionFactory.CreateConnection();
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT UserId, FullName, Email, PasswordHash, Role, ContactNumber, CreatedAt FROM Users WHERE Email = @Email";
-        
-        var parameter = command.CreateParameter();
-        parameter.ParameterName = "@Email";
-        parameter.Value = email;
-        command.Parameters.Add(parameter);
+        await using var connection = (SqlConnection)_connectionFactory.CreateConnection();
+        await connection.OpenAsync();
 
-        if (connection.State != ConnectionState.Open) await ((MySqlConnection)connection).OpenAsync();
+        const string sql = """
+            SELECT TOP 1 user_id, full_name, email, password_hash, role, created_at
+            FROM dbo.[User]
+            WHERE email = @Email;
+            """;
 
-        using var reader = await ((MySqlCommand)command).ExecuteReaderAsync();
-        if (await reader.ReadAsync())
-        {
-            return new User
-            {
-                UserId = reader.GetInt32("UserId"),
-                FullName = reader.GetString("FullName"),
-                Email = reader.GetString("Email"),
-                PasswordHash = reader.GetString("PasswordHash"),
-                Role = reader.GetString("Role"),
-                ContactNumber = reader.IsDBNull(reader.GetOrdinal("ContactNumber")) ? null : reader.GetString("ContactNumber"),
-                CreatedAt = reader.GetDateTime("CreatedAt")
-            };
-        }
+        await using var cmd = new SqlCommand(sql, connection);
+        cmd.Parameters.AddWithValue("@Email", email.ToLowerInvariant());
 
-        return null;
+        await using var reader = await cmd.ExecuteReaderAsync();
+        if (!await reader.ReadAsync()) return null;
+
+        return MapUser(reader);
+    }
+
+    /// <inheritdoc />
+    public async Task<User?> GetByIdAsync(int id)
+    {
+        await using var connection = (SqlConnection)_connectionFactory.CreateConnection();
+        await connection.OpenAsync();
+
+        const string sql = """
+            SELECT TOP 1 user_id, full_name, email, password_hash, role, created_at
+            FROM dbo.[User]
+            WHERE user_id = @Id;
+            """;
+
+        await using var cmd = new SqlCommand(sql, connection);
+        cmd.Parameters.AddWithValue("@Id", id);
+
+        await using var reader = await cmd.ExecuteReaderAsync();
+        if (!await reader.ReadAsync()) return null;
+
+        return MapUser(reader);
     }
 
     /// <inheritdoc />
     public async Task<int> CreateAsync(User user)
     {
-        using var connection = _connectionFactory.CreateConnection();
-        using var command = connection.CreateCommand();
-        command.CommandText = @"
-            INSERT INTO Users (FullName, Email, PasswordHash, Role, ContactNumber, CreatedAt) 
-            VALUES (@FullName, @Email, @PasswordHash, @Role, @ContactNumber, @CreatedAt);
-            SELECT LAST_INSERT_ID();";
+        await using var connection = (SqlConnection)_connectionFactory.CreateConnection();
+        await connection.OpenAsync();
 
-        command.Parameters.Add(new MySqlParameter("@FullName", user.FullName));
-        command.Parameters.Add(new MySqlParameter("@Email", user.Email));
-        command.Parameters.Add(new MySqlParameter("@PasswordHash", user.PasswordHash));
-        command.Parameters.Add(new MySqlParameter("@Role", user.Role));
-        command.Parameters.Add(new MySqlParameter("@ContactNumber", (object?)user.ContactNumber ?? DBNull.Value));
-        command.Parameters.Add(new MySqlParameter("@CreatedAt", user.CreatedAt));
+        const string sql = """
+            INSERT INTO dbo.[User] (full_name, email, password_hash, role, created_at)
+            VALUES (@FullName, @Email, @PasswordHash, @Role, @CreatedAt);
+            SELECT CAST(SCOPE_IDENTITY() as int);
+            """;
 
-        if (connection.State != ConnectionState.Open) await ((MySqlConnection)connection).OpenAsync();
-        
-        var result = await ((MySqlCommand)command).ExecuteScalarAsync();
-        user.UserId = Convert.ToInt32(result);
-        return user.UserId;
+        await using var cmd = new SqlCommand(sql, connection);
+        cmd.Parameters.AddWithValue("@FullName", user.FullName);
+        cmd.Parameters.AddWithValue("@Email", user.Email.ToLowerInvariant());
+        cmd.Parameters.AddWithValue("@PasswordHash", user.PasswordHash);
+        cmd.Parameters.AddWithValue("@Role", user.Role);
+        cmd.Parameters.AddWithValue("@CreatedAt", user.CreatedAt);
+
+        user.Id = (int)(await cmd.ExecuteScalarAsync() ?? 0);
+        return user.Id;
     }
+
+    private static User MapUser(SqlDataReader r) => new()
+    {
+        Id = r.GetInt32(r.GetOrdinal("user_id")),
+        FullName = r.GetString(r.GetOrdinal("full_name")),
+        Email = r.GetString(r.GetOrdinal("email")),
+        PasswordHash = r.GetString(r.GetOrdinal("password_hash")),
+        Role = r.GetString(r.GetOrdinal("role")),
+        CreatedAt = r.GetDateTime(r.GetOrdinal("created_at"))
+    };
 }

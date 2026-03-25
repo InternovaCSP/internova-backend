@@ -1,19 +1,19 @@
 using System.Data;
-using MySql.Data.MySqlClient;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 
 namespace Internova.Infrastructure.Data;
 
 /// <summary>
-/// Factory to provide MySql database connections for ADO.NET.
+/// Factory that provides local MySQL connections for raw ADO.NET operations.
 /// </summary>
 public class DbConnectionFactory(IConfiguration configuration)
 {
-    private readonly string _connectionString = configuration.GetConnectionString("Default") 
-        ?? throw new InvalidOperationException("Connection string 'Default' not found.");
+    private readonly string _connectionString = configuration.GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found. Add it to appsettings.Development.json.");
 
     public IDbConnection CreateConnection()
     {
-        return new MySqlConnection(_connectionString);
+        return new SqlConnection(_connectionString);
     }
 }
