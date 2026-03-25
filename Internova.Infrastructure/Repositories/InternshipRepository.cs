@@ -151,14 +151,31 @@ public class InternshipRepository : IInternshipRepository
     {
         await using var connection = (SqlConnection)_connectionFactory.CreateConnection();
         await connection.OpenAsync();
+        await using var transaction = connection.BeginTransaction();
 
-        const string sql = "DELETE FROM dbo.Internship WHERE internship_id = @Id";
+        try
+        {
+            // 1. Delete associated applications
+            const string deleteAppsSql = "DELETE FROM dbo.Internship_Application WHERE internship_id = @Id";
+            await using var deleteAppsCmd = new SqlCommand(deleteAppsSql, connection, transaction);
+            deleteAppsCmd.Parameters.AddWithValue("@Id", id);
+            await deleteAppsCmd.ExecuteNonQueryAsync();
 
-        await using var cmd = new SqlCommand(sql, connection);
-        cmd.Parameters.AddWithValue("@Id", id);
+            // 2. Delete the internship
+            const string deleteInternshipSql = "DELETE FROM dbo.Internship WHERE internship_id = @Id";
+            await using var deleteInternshipCmd = new SqlCommand(deleteInternshipSql, connection, transaction);
+            deleteInternshipCmd.Parameters.AddWithValue("@Id", id);
 
-        var affected = await cmd.ExecuteNonQueryAsync();
-        return affected > 0;
+            var affected = await deleteInternshipCmd.ExecuteNonQueryAsync();
+            await transaction.CommitAsync();
+            return affected > 0;
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            _logger.LogError(ex, "Error deleting internship {InternshipId}", id);
+            throw;
+        }
     }
 
     private static Internship MapInternship(SqlDataReader r) => new()

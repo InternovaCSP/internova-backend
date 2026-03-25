@@ -11,8 +11,26 @@ namespace Internova.Api.Controllers;
 [Authorize]
 public class ApplicationsController(
     IInternshipApplicationRepository applicationRepository,
+    IStudentProfileRepository studentProfileRepository,
     ILogger<ApplicationsController> logger) : ControllerBase
 {
+    // ─── GET /api/applications/student/{id}/profile ─────────────────────────
+    [HttpGet("student/{studentId:int}/profile")]
+    [Authorize(Roles = "Company,Admin")]
+    public async Task<IActionResult> GetStudentProfile(int studentId)
+    {
+        try
+        {
+            var profile = await studentProfileRepository.GetByUserIdAsync(studentId);
+            if (profile == null) return NotFound(new { error = "Student profile not found." });
+            return Ok(profile);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to fetch profile for student {StudentId}", studentId);
+            return StatusCode(500, new { error = "Internal server error" });
+        }
+    }
     // ─── GET /api/applications/pipeline-stats ────────────────────────────────
     [HttpGet("pipeline-stats")]
     [Authorize(Roles = "Student")]

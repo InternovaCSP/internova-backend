@@ -24,13 +24,14 @@ public class CompetitionRepository : ICompetitionRepository
         await connection.OpenAsync();
 
         const string sql = @"
-            SELECT competition_id AS Id, organizer_id AS OrganizerId, title AS Title, 
-                   description AS Description, category AS Category, 
-                   eligibility_criteria AS EligibilityCriteria, start_date AS StartDate, 
-                   end_date AS EndDate, registration_link AS RegistrationLink, 
-                   is_approved AS IsApproved
-            FROM dbo.Competition
-            WHERE competition_id = @Id";
+            SELECT c.competition_id AS Id, c.organizer_id AS OrganizerId, c.title AS Title, 
+                   c.description AS Description, c.category AS Category, 
+                   c.eligibility_criteria AS EligibilityCriteria, c.start_date AS StartDate, 
+                   c.end_date AS EndDate, c.registration_link AS RegistrationLink, 
+                   c.is_approved AS IsApproved, u.full_name AS OrganizerName
+            FROM dbo.Competition c
+            LEFT JOIN dbo.[User] u ON c.organizer_id = u.user_id
+            WHERE c.competition_id = @Id";
 
         await using var cmd = new SqlCommand(sql, connection);
         cmd.Parameters.AddWithValue("@Id", id);
@@ -48,12 +49,13 @@ public class CompetitionRepository : ICompetitionRepository
         await connection.OpenAsync();
 
         const string sql = @"
-            SELECT competition_id AS Id, organizer_id AS OrganizerId, title AS Title, 
-                   description AS Description, category AS Category, 
-                   eligibility_criteria AS EligibilityCriteria, start_date AS StartDate, 
-                   end_date AS EndDate, registration_link AS RegistrationLink, 
-                   is_approved AS IsApproved
-            FROM dbo.Competition";
+            SELECT c.competition_id AS Id, c.organizer_id AS OrganizerId, c.title AS Title, 
+                   c.description AS Description, c.category AS Category, 
+                   c.eligibility_criteria AS EligibilityCriteria, c.start_date AS StartDate, 
+                   c.end_date AS EndDate, c.registration_link AS RegistrationLink, 
+                   c.is_approved AS IsApproved, u.full_name AS OrganizerName
+            FROM dbo.Competition c
+            LEFT JOIN dbo.[User] u ON c.organizer_id = u.user_id";
 
         await using var cmd = new SqlCommand(sql, connection);
         await using var reader = await cmd.ExecuteReaderAsync();
@@ -147,6 +149,7 @@ public class CompetitionRepository : ICompetitionRepository
         StartDate = r.IsDBNull(r.GetOrdinal("StartDate")) ? null : r.GetDateTime(r.GetOrdinal("StartDate")),
         EndDate = r.IsDBNull(r.GetOrdinal("EndDate")) ? null : r.GetDateTime(r.GetOrdinal("EndDate")),
         RegistrationLink = r.IsDBNull(r.GetOrdinal("RegistrationLink")) ? null : r.GetString(r.GetOrdinal("RegistrationLink")),
-        IsApproved = r.GetBoolean(r.GetOrdinal("IsApproved"))
+        IsApproved = r.GetBoolean(r.GetOrdinal("IsApproved")),
+        OrganizerName = r.IsDBNull(r.GetOrdinal("OrganizerName")) ? null : r.GetString(r.GetOrdinal("OrganizerName"))
     };
 }
