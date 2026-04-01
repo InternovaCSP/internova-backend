@@ -34,7 +34,7 @@ public class ProjectsController(IProjectRepository projectRepository, ILogger<Pr
     public async Task<IActionResult> CreateProject([FromBody] CreateProjectDto dto)
     {
         var userIdClaim = User.FindFirstValue("user_id");
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var creatorId))
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var leaderId))
         {
             return Unauthorized(new { error = "User identity could not be determined." });
         }
@@ -43,18 +43,20 @@ public class ProjectsController(IProjectRepository projectRepository, ILogger<Pr
         {
             var project = new Project
             {
-                CreatorId = creatorId,
+                LeaderId = leaderId,
                 Title = dto.Title,
                 Description = dto.Description,
                 Category = dto.Category,
-                Status = "Open",
-                CreatedAt = DateTime.UtcNow
+                RequiredSkills = dto.RequiredSkills,
+                TeamSize = dto.TeamSize,
+                Status = "Active",
+                IsApproved = true // Auto approve for simplicity or set to false if admin approval required
             };
 
             var createdProject = await projectRepository.CreateProjectAsync(project);
 
-            // Auto-assign creator as Leader
-            await projectRepository.AddProjectMemberAsync(createdProject.Id, creatorId, "Leader");
+            // Auto-assign creator as Leader (Accepted status)
+            await projectRepository.AddProjectParticipationAsync(createdProject.Id, leaderId, "Leader", "Accepted");
 
             return CreatedAtAction(nameof(GetProjects), new { id = createdProject.Id }, createdProject);
         }
@@ -81,12 +83,12 @@ public class ProjectsController(IProjectRepository projectRepository, ILogger<Pr
             var project = await projectRepository.GetProjectByIdAsync(id);
             if (project == null) return NotFound(new { error = "Project not found" });
 
-            if (project.CreatorId == studentId)
+            if (project.LeaderId == studentId)
             {
                 return BadRequest(new { error = "You cannot join your own project." });
             }
 
-            var success = await projectRepository.CreateJoinRequestAsync(id, studentId);
+            var success = await projectRepository.AddProjectParticipationAsync(id, studentId, "Member", "Pending");
             if (!success)
             {
                 // Most likely already requested
@@ -115,12 +117,34 @@ public class ProjectsController(IProjectRepository projectRepository, ILogger<Pr
 
         try
         {
-            var requests = await projectRepository.GetStudentRequestsAsync(studentId);
+            var requests = await projectRepository.GetStudentParticipationsAsync(studentId);
             return Ok(requests);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error fetching requests");
+            return StatusCode(500, new { error = "Internal server error" });
+        }
+    }
+
+    // DELETE /api/projects/{id}: Admin deletes a project.
+    [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> DeleteProject(int id)
+    {
+        try
+        {
+            var project = await projectRepository.GetProjectByIdAsync(id);
+            if (project == null) return NotFound(new { error = "Project not found" });
+
+            var deleted = await projectRepository.DeleteProjectAsync(id);
+            if (!deleted) return StatusCode(500, new { error = "Failed to delete project" });
+
+            return Ok(new { message = "Project deleted successfully." });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error deleting project {ProjectId}", id);
             return StatusCode(500, new { error = "Internal server error" });
         }
     }

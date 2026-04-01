@@ -10,4 +10,8 @@ public class CreateProjectDto
     public string Description { get; set; } = string.Empty;
 
     public string Category { get; set; } = string.Empty;
+
+    public string? RequiredSkills { get; set; }
+
+    public int? TeamSize { get; set; }
 }
