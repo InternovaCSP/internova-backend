@@ -162,3 +162,4 @@ CREATE TABLE BreakoutRoom_Registration (
 );
 
 CREATE DATABASE internova_db_local;
+CREATE DATABASE internova_db_local;

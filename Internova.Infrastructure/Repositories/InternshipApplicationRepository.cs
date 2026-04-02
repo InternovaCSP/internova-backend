@@ -174,7 +174,12 @@ public class InternshipApplicationRepository : IInternshipApplicationRepository
         {
             var status = reader.GetString(0);
             var count = reader.GetInt32(1);
-            if (stats.ContainsKey(status))
+
+            if (status == "InterviewScheduled")
+            {
+                stats["Interviewing"] += count;
+            }
+            else if (stats.ContainsKey(status))
             {
                 stats[status] = count;
             }
@@ -197,7 +202,7 @@ public class InternshipApplicationRepository : IInternshipApplicationRepository
         const string sql = @"
             SELECT 
                 COUNT(*) as TotalApplications,
-                SUM(CASE WHEN status = 'Interviewing' THEN 1 ELSE 0 END) as InterviewCount
+                SUM(CASE WHEN status IN ('Interviewing', 'InterviewScheduled') THEN 1 ELSE 0 END) as InterviewCount
             FROM Internship_Application 
             WHERE student_id = @StudentId";
 

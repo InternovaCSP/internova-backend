@@ -29,6 +29,9 @@ public static class ServiceRegistration
         services.AddScoped<ICompetitionRepository, CompetitionRepository>();
         services.AddScoped<ICompanyProfileRepository, CompanyProfileRepository>();
         services.AddScoped<IBreakoutRoomRepository, BreakoutRoomRepository>();
+        services.AddScoped<ISeminarRepository, SeminarRepository>();
+        services.AddScoped<IInterviewRepository, InterviewRepository>();
+        services.AddScoped<IProjectRepository, ProjectRepository>();
 
         // --- Services ---
         services.AddScoped<IBlobStorageService, BlobStorageService>();
