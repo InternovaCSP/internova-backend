@@ -74,7 +74,7 @@ CREATE TABLE Internship (
     requirements TEXT,
     duration VARCHAR(100),
     location VARCHAR(255),
-    status VARCHAR(50) DEFAULT 'Active' CHECK (status IN ('Active', 'Closed')),
+    status VARCHAR(50) DEFAULT 'Active' CHECK (status IN ('Active', 'Closed', 'Pending Approval')),
     is_published BIT DEFAULT 0,
     created_at DATETIME2 DEFAULT GETDATE(),
     company_description NVARCHAR(MAX),
@@ -118,32 +118,21 @@ CREATE TABLE Internship_Application (
     application_id INT IDENTITY(1,1) PRIMARY KEY,
     internship_id INT NOT NULL,
     student_id INT NOT NULL,
-    status VARCHAR(50) DEFAULT 'Applied' CHECK (status IN ('Applied', 'Shortlisted', 'Interview', 'Selected', 'Rejected')),
+    status VARCHAR(50) DEFAULT 'Applied' CHECK (status IN ('Applied', 'Shortlisted', 'InterviewScheduled', 'Interviewing', 'Selected', 'Rejected')),
     applied_at DATETIME2 DEFAULT GETDATE(),
     CONSTRAINT FK_IA_Internship FOREIGN KEY (internship_id) REFERENCES Internship(internship_id),
     CONSTRAINT FK_IA_Student FOREIGN KEY (student_id) REFERENCES Student_Profile(student_id)
 );
 
--- 11. Seminar_Request Table
-CREATE TABLE Seminar_Request (
-    id INT IDENTITY(1,1) PRIMARY KEY,
-    student_id INT NOT NULL,
-    topic VARCHAR(255) NOT NULL,
-    description TEXT NOT NULL,
-    status VARCHAR(50) DEFAULT 'Pending' CHECK (status IN ('Pending', 'Approved', 'Rejected')),
-    threshold INT DEFAULT 2,
+-- 11. Interview Table
+CREATE TABLE Interview (
+    interview_id INT IDENTITY(1,1) PRIMARY KEY,
+    application_id INT NOT NULL,
+    interview_date DATETIME2 NOT NULL,
+    location_or_link VARCHAR(2048) NOT NULL,
     created_at DATETIME2 DEFAULT GETDATE(),
     updated_at DATETIME2 DEFAULT GETDATE(),
-    CONSTRAINT FK_SeminarRequest_Student FOREIGN KEY (student_id) REFERENCES [User](user_id)
+    CONSTRAINT FK_Interview_Application FOREIGN KEY (application_id) REFERENCES Internship_Application(application_id) ON DELETE CASCADE
 );
 
--- 12. Seminar_Vote Table
-CREATE TABLE Seminar_Vote (
-    vote_id INT IDENTITY(1,1) PRIMARY KEY,
-    request_id INT NOT NULL,
-    student_id INT NOT NULL,
-    voted_at DATETIME2 DEFAULT GETDATE(),
-    CONSTRAINT FK_SeminarVote_Request FOREIGN KEY (request_id) REFERENCES Seminar_Request(id) ON DELETE CASCADE,
-    CONSTRAINT FK_SeminarVote_Student FOREIGN KEY (student_id) REFERENCES [User](user_id),
-    CONSTRAINT UNQ_SeminarVote_RequestStudent UNIQUE (request_id, student_id)
-);
+CREATE DATABASE internova_db_local;
