@@ -135,4 +135,31 @@ CREATE TABLE Interview (
     CONSTRAINT FK_Interview_Application FOREIGN KEY (application_id) REFERENCES Internship_Application(application_id) ON DELETE CASCADE
 );
 
+-- 12. Breakout Room Table
+CREATE TABLE BreakoutRoom (
+    room_id INT IDENTITY(1,1) PRIMARY KEY,
+    organizer_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    scheduled_at DATETIME2 NOT NULL,
+    meeting_link VARCHAR(2048),
+    status VARCHAR(50) DEFAULT 'Scheduled' CHECK (status IN ('Scheduled', 'Active', 'Completed', 'Cancelled')),
+    award_skills TEXT,
+    created_at DATETIME2 DEFAULT GETDATE(),
+    updated_at DATETIME2 DEFAULT GETDATE(),
+    CONSTRAINT FK_BreakoutRoom_Organizer FOREIGN KEY (organizer_id) REFERENCES [User](user_id)
+);
+
+-- 13. Breakout Room Registration Table
+CREATE TABLE BreakoutRoom_Registration (
+    registration_id INT IDENTITY(1,1) PRIMARY KEY,
+    room_id INT NOT NULL,
+    student_id INT NOT NULL,
+    registered_at DATETIME2 DEFAULT GETDATE(),
+    attended BIT DEFAULT 0,
+    CONSTRAINT FK_BR_Registration_Room FOREIGN KEY (room_id) REFERENCES BreakoutRoom(room_id) ON DELETE CASCADE,
+    CONSTRAINT FK_BR_Registration_Student FOREIGN KEY (student_id) REFERENCES Student_Profile(student_id)
+);
+
+CREATE DATABASE internova_db_local;
 CREATE DATABASE internova_db_local;
