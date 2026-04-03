@@ -202,6 +202,85 @@ public static class DatabaseInitializer
             await migrateApplicationCmd.ExecuteNonQueryAsync();
             logger.LogInformation("✅ Internship_Application schema migration verified.");
 
+            // ── Create Seminar_Request Table if missing ──
+            const string createSeminarRequestTableSql = @"
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Seminar_Request')
+                BEGIN
+                    CREATE TABLE Seminar_Request (
+                        id INT IDENTITY(1,1) PRIMARY KEY,
+                        student_id INT NOT NULL,
+                        topic VARCHAR(255) NOT NULL,
+                        description TEXT NOT NULL,
+                        status VARCHAR(50) DEFAULT 'Pending' CHECK (status IN ('Pending', 'Approved', 'Rejected')),
+                        threshold INT DEFAULT 2,
+                        created_at DATETIME2 DEFAULT GETDATE(),
+                        updated_at DATETIME2 DEFAULT GETDATE(),
+                        CONSTRAINT FK_SeminarRequest_Student FOREIGN KEY (student_id) REFERENCES [User](user_id)
+                    );
+                END";
+            await using var createSeminarRequestCmd = new SqlCommand(createSeminarRequestTableSql, connection);
+            await createSeminarRequestCmd.ExecuteNonQueryAsync();
+            logger.LogInformation("✅ Seminar_Request table verified / created.");
+
+            // ── Create Seminar_Vote Table if missing ──
+            const string createSeminarVoteTableSql = @"
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Seminar_Vote')
+                BEGIN
+                    CREATE TABLE Seminar_Vote (
+                        vote_id INT IDENTITY(1,1) PRIMARY KEY,
+                        request_id INT NOT NULL,
+                        student_id INT NOT NULL,
+                        voted_at DATETIME2 DEFAULT GETDATE(),
+                        CONSTRAINT FK_SeminarVote_Request FOREIGN KEY (request_id) REFERENCES Seminar_Request(id) ON DELETE CASCADE,
+                        CONSTRAINT FK_SeminarVote_Student FOREIGN KEY (student_id) REFERENCES [User](user_id),
+                        CONSTRAINT UNQ_SeminarVote_RequestStudent UNIQUE (request_id, student_id)
+                    );
+                END";
+            await using var createSeminarVoteCmd = new SqlCommand(createSeminarVoteTableSql, connection);
+            await createSeminarVoteCmd.ExecuteNonQueryAsync();
+            logger.LogInformation("✅ Seminar_Vote table verified / created.");
+            // ── Create Project Table if missing (Schema matched to azure_sql) ──
+            const string createProjectTableSql = @"
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Project')
+                BEGIN
+                    CREATE TABLE Project (
+                        project_id INT IDENTITY(1,1) PRIMARY KEY,
+                        leader_id INT NOT NULL,
+                        title VARCHAR(255) NOT NULL,
+                        description TEXT,
+                        category VARCHAR(50) CHECK (category IN ('Research', 'Startup', 'Product')),
+                        required_skills TEXT,
+                        team_size INT,
+                        status VARCHAR(50) DEFAULT 'Active' CHECK (status IN ('Active', 'Completed')),
+                        is_approved BIT DEFAULT 0,
+                        CONSTRAINT FK_Project_Leader FOREIGN KEY (leader_id) REFERENCES [User](user_id) ON DELETE CASCADE
+                    );
+                END";
+            await using var createProjectCmd = new SqlCommand(createProjectTableSql, connection);
+            await createProjectCmd.ExecuteNonQueryAsync();
+            logger.LogInformation("✅ Project table verified / created.");
+
+            // ── Create Project_Participation Table if missing ──
+            const string createProjectParticipationTableSql = @"
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Project_Participation')
+                BEGIN
+                    CREATE TABLE Project_Participation (
+                        participation_id INT IDENTITY(1,1) PRIMARY KEY,
+                        project_id INT NOT NULL,
+                        student_id INT NOT NULL,
+                        role VARCHAR(100),
+                        status VARCHAR(50) DEFAULT 'Pending' CHECK (status IN ('Pending', 'Accepted', 'Rejected')),
+                        joined_at DATETIME2 DEFAULT GETDATE(),
+                        CONSTRAINT FK_PP_Project FOREIGN KEY (project_id) REFERENCES Project(project_id) ON DELETE CASCADE,
+                        CONSTRAINT FK_PP_Student FOREIGN KEY (student_id) REFERENCES [User](user_id) ON DELETE NO ACTION
+                    );
+                END";
+            await using var createProjectParticipationCmd = new SqlCommand(createProjectParticipationTableSql, connection);
+            await createProjectParticipationCmd.ExecuteNonQueryAsync();
+            logger.LogInformation("✅ Project_Participation table verified / created.");
+
+
+
             // ── Step 3: Seed Admin User ──
             await SeedAdminUserAsync(connection, logger);
         }
