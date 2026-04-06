@@ -61,20 +61,24 @@ jobs:
     - name: Run Tests (CRUD Operations)
       env:
         TEST_CONNECTION_STRING: "Data Source=localhost;Initial Catalog=internova_db_local;User Id=sa;Password=Password123!;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True;"
-      run: dotnet test --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test_results.trx" --results-directory ./TestResults
+      run: dotnet test --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test_results.trx" --results-directory test-reports
       working-directory: ./
+
+    - name: List files (Debug)
+      if: always()
+      run: ls -R test-reports || echo "test-reports directory not found"
 
     - name: Upload Test Results
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: dotnet-test-results
-        path: TestResults/test_results.trx
+        path: test-reports/test_results.trx
 
     - name: Test Report
       uses: dorny/test-reporter@v1
       if: always()
       with:
         name: .NET Integration Test Results
-        path: "TestResults/*.trx"
+        path: "test-reports/*.trx"
         reporter: dotnet-trx
