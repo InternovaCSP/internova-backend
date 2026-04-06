@@ -8,7 +8,8 @@ public class DbChecker
 {
     public static async Task Main(string[] args)
     {
-        string connectionString = "Data Source=localhost\\SQLEXPRESS;Initial Catalog=internova_db_local;Integrated Security=True;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True;";
+        string connectionString = Environment.GetEnvironmentVariable("TEST_CONNECTION_STRING") 
+            ?? "Data Source=localhost\\SQLEXPRESS;Initial Catalog=internova_db_local;Integrated Security=True;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True;";
         
         try 
         {

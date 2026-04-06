@@ -8,7 +8,9 @@ namespace Internova.Tests;
 
 public class DbVerificationTest
 {
-    private const string ConnectionString = "Data Source=localhost\\SQLEXPRESS;Initial Catalog=internova_db_local;Integrated Security=True;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True;";
+    private static string ConnectionString => 
+        Environment.GetEnvironmentVariable("TEST_CONNECTION_STRING") 
+        ?? "Data Source=localhost\\SQLEXPRESS;Initial Catalog=internova_db_local;Integrated Security=True;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True;";
 
     [Fact]
     public async Task CheckUsersInDb()

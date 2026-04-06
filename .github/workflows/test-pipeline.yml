@@ -1,0 +1,80 @@
+name: Test Pipeline
+
+on:
+  push:
+    branches: [ "test/pipeline" ]
+  pull_request:
+    branches: [ "test/pipeline" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      contents: read
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: "Password123!"
+        ports:
+          - 1433:1433
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore
+      working-directory: ./
+
+    - name: Build
+      run: dotnet build --no-restore --configuration Release
+      working-directory: ./
+
+    - name: Wait for SQL Server to be ready
+      run: |
+        echo "Waiting for SQL Server to start..."
+        timeout 60s bash -c 'until docker exec $(docker ps -f "ancestor=mcr.microsoft.com/mssql/server:2022-latest" -q) /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "Password123!" -Q "SELECT 1" -C -t 1 > /dev/null 2>&1; do sleep 2; done'
+        echo "SQL Server is up!"
+
+    - name: Initialize Database Schema
+      run: |
+        # Get the container ID
+        CONTAINER_ID=$(docker ps -f "ancestor=mcr.microsoft.com/mssql/server:2022-latest" -q)
+        
+        # Create the database
+        docker exec $CONTAINER_ID /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "Password123!" -Q "IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'internova_db_local') CREATE DATABASE internova_db_local" -C
+        
+        # Copy and execute the schema script
+        # We need to filter out the CREATE DATABASE lines from the script if they cause issues, 
+        # or just let them fail/ignore if they are already created.
+        docker cp azure_sql-sprint3.txt $CONTAINER_ID:/tmp/schema.sql
+        docker exec $CONTAINER_ID /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "Password123!" -d internova_db_local -i /tmp/schema.sql -C
+      working-directory: ./
+
+    - name: Run Tests (CRUD Operations)
+      env:
+        TEST_CONNECTION_STRING: "Data Source=localhost;Initial Catalog=internova_db_local;User Id=sa;Password=Password123!;Encrypt=True;TrustServerCertificate=True;MultipleActiveResultSets=True;"
+      run: dotnet test --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test_results.trx"
+      working-directory: ./
+
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: dotnet-test-results
+        path: "**/test_results.trx"
+
+    - name: Test Report
+      uses: dorny/test-reporter@v1
+      if: always()
+      with:
+        name: .NET Integration Test Results
+        path: "**/test_results.trx"
+        reporter: dotnet-trx
