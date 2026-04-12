@@ -17,7 +17,7 @@ public class UserRepository(DbConnectionFactory connectionFactory) : IUserReposi
         await connection.OpenAsync();
 
         const string sql = """
-            SELECT TOP 1 user_id, full_name, email, password_hash, role, created_at
+            SELECT TOP 1 user_id, full_name, email, password_hash, role, bio, location, profile_picture_url, created_at
             FROM dbo.[User]
             WHERE email = @Email;
             """;
@@ -38,7 +38,7 @@ public class UserRepository(DbConnectionFactory connectionFactory) : IUserReposi
         await connection.OpenAsync();
 
         const string sql = """
-            SELECT TOP 1 user_id, full_name, email, password_hash, role, created_at
+            SELECT TOP 1 user_id, full_name, email, password_hash, role, bio, location, profile_picture_url, created_at
             FROM dbo.[User]
             WHERE user_id = @Id;
             """;
@@ -75,6 +75,31 @@ public class UserRepository(DbConnectionFactory connectionFactory) : IUserReposi
         return user.Id;
     }
 
+    /// <inheritdoc />
+    public async Task UpdateAsync(User user)
+    {
+        await using var connection = (SqlConnection)_connectionFactory.CreateConnection();
+        await connection.OpenAsync();
+
+        const string sql = """
+            UPDATE dbo.[User]
+            SET full_name = @FullName,
+                bio = @Bio,
+                location = @Location,
+                profile_picture_url = @ProfilePictureUrl
+            WHERE user_id = @Id;
+            """;
+
+        await using var cmd = new SqlCommand(sql, connection);
+        cmd.Parameters.AddWithValue("@FullName", user.FullName);
+        cmd.Parameters.AddWithValue("@Bio", (object?)user.Bio ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@Location", (object?)user.Location ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@ProfilePictureUrl", (object?)user.ProfilePictureUrl ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@Id", user.Id);
+
+        await cmd.ExecuteNonQueryAsync();
+    }
+
     private static User MapUser(SqlDataReader r) => new()
     {
         Id = r.GetInt32(r.GetOrdinal("user_id")),
@@ -82,6 +107,9 @@ public class UserRepository(DbConnectionFactory connectionFactory) : IUserReposi
         Email = r.GetString(r.GetOrdinal("email")),
         PasswordHash = r.GetString(r.GetOrdinal("password_hash")),
         Role = r.GetString(r.GetOrdinal("role")),
+        Bio = r.IsDBNull(r.GetOrdinal("bio")) ? null : r.GetString(r.GetOrdinal("bio")),
+        Location = r.IsDBNull(r.GetOrdinal("location")) ? null : r.GetString(r.GetOrdinal("location")),
+        ProfilePictureUrl = r.IsDBNull(r.GetOrdinal("profile_picture_url")) ? null : r.GetString(r.GetOrdinal("profile_picture_url")),
         CreatedAt = r.GetDateTime(r.GetOrdinal("created_at"))
     };
 }

@@ -16,4 +16,7 @@ public interface IUserRepository
 
     /// <summary>Persists a new user and returns the generated Id.</summary>
     Task<int> CreateAsync(User user);
+
+    /// <summary>Updates an existing user's profile details.</summary>
+    Task UpdateAsync(User user);
 }
