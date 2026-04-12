@@ -18,5 +18,11 @@ public class User
     /// <summary>Role values: "Student", "Company", "Admin"</summary>
     public string Role { get; set; } = string.Empty;
 
+    public string? Bio { get; set; }
+
+    public string? Location { get; set; }
+
+    public string? ProfilePictureUrl { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
