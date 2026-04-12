@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Internova.Core.DTOs;
+using Internova.Api.DTOs;
 using Internova.Core.Entities;
 using Internova.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
