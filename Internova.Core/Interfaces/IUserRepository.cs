@@ -25,4 +25,6 @@ public interface IUserRepository
 
     /// <summary>Permanently deletes a user and associated data.</summary>
     Task DeleteAsync(int userId);
+    /// <summary>Updates an existing user's profile details.</summary>
+    Task UpdateAsync(User user);
 }

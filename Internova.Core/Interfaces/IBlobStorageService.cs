@@ -17,4 +17,9 @@ public interface IBlobStorageService
     /// <returns>The absolute URL of the stored blob.</returns>
     /// <exception cref="ArgumentException">Thrown if file type or size is invalid.</exception>
     Task<string> UploadResumeAsync(Stream stream, string fileName, string contentType, long fileSizeBytes, int studentId);
+
+    /// <summary>
+    /// Validates and uploads a profile image for a user.
+    /// </summary>
+    Task<string> UploadImageAsync(Stream stream, string fileName, string contentType, long fileSizeBytes, int userId);
 }

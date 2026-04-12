@@ -24,5 +24,11 @@ public class User
 
     public string ThemePreference { get; set; } = "system";
 
+    public string? Bio { get; set; }
+
+    public string? Location { get; set; }
+
+    public string? ProfilePictureUrl { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

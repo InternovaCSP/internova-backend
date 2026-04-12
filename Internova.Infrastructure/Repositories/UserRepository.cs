@@ -5,20 +5,19 @@ using Microsoft.Data.SqlClient;
 
 namespace Internova.Infrastructure.Repositories;
 
-/// <summary>Raw ADO.NET implementation of IUserRepository.</summary>
 public class UserRepository(DbConnectionFactory connectionFactory) : IUserRepository
 {
     private readonly DbConnectionFactory _connectionFactory = connectionFactory;
 
-    /// <inheritdoc />
     public async Task<User?> GetByEmailAsync(string email)
     {
         await using var connection = (SqlConnection)_connectionFactory.CreateConnection();
         await connection.OpenAsync();
 
         const string sql = """
-            SELECT TOP 1 user_id, full_name, email, password_hash, role, 
-                         email_notifications_enabled, push_notifications_enabled, theme_preference, created_at
+            SELECT TOP 1 user_id, full_name, email, password_hash, role,
+                   email_notifications_enabled, push_notifications_enabled, theme_preference,
+                   bio, location, profile_picture_url, created_at
             FROM dbo.[User]
             WHERE email = @Email;
             """;
@@ -32,7 +31,6 @@ public class UserRepository(DbConnectionFactory connectionFactory) : IUserReposi
         return MapUser(reader);
     }
 
-    /// <inheritdoc />
     public async Task<User?> GetByIdAsync(int id)
     {
         await using var connection = (SqlConnection)_connectionFactory.CreateConnection();
@@ -40,7 +38,8 @@ public class UserRepository(DbConnectionFactory connectionFactory) : IUserReposi
 
         const string sql = """
             SELECT TOP 1 user_id, full_name, email, password_hash, role,
-                         email_notifications_enabled, push_notifications_enabled, theme_preference, created_at
+                   email_notifications_enabled, push_notifications_enabled, theme_preference,
+                   bio, location, profile_picture_url, created_at
             FROM dbo.[User]
             WHERE user_id = @Id;
             """;
@@ -54,7 +53,6 @@ public class UserRepository(DbConnectionFactory connectionFactory) : IUserReposi
         return MapUser(reader);
     }
 
-    /// <inheritdoc />
     public async Task<int> CreateAsync(User user)
     {
         await using var connection = (SqlConnection)_connectionFactory.CreateConnection();
@@ -83,7 +81,7 @@ public class UserRepository(DbConnectionFactory connectionFactory) : IUserReposi
         return user.Id;
     }
 
-    /// <inheritdoc />
+    // ✅ SETTINGS UPDATE
     public async Task UpdateSettingsAsync(int userId, bool emailNotif, bool pushNotif, string theme)
     {
         await using var connection = (SqlConnection)_connectionFactory.CreateConnection();
@@ -106,7 +104,31 @@ public class UserRepository(DbConnectionFactory connectionFactory) : IUserReposi
         await cmd.ExecuteNonQueryAsync();
     }
 
-    /// <inheritdoc />
+    // ✅ PROFILE UPDATE
+    public async Task UpdateAsync(User user)
+    {
+        await using var connection = (SqlConnection)_connectionFactory.CreateConnection();
+        await connection.OpenAsync();
+
+        const string sql = """
+            UPDATE dbo.[User]
+            SET full_name = @FullName,
+                bio = @Bio,
+                location = @Location,
+                profile_picture_url = @ProfilePictureUrl
+            WHERE user_id = @Id;
+            """;
+
+        await using var cmd = new SqlCommand(sql, connection);
+        cmd.Parameters.AddWithValue("@FullName", user.FullName);
+        cmd.Parameters.AddWithValue("@Bio", (object?)user.Bio ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@Location", (object?)user.Location ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@ProfilePictureUrl", (object?)user.ProfilePictureUrl ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@Id", user.Id);
+
+        await cmd.ExecuteNonQueryAsync();
+    }
+
     public async Task UpdatePasswordAsync(int userId, string newPasswordHash)
     {
         await using var connection = (SqlConnection)_connectionFactory.CreateConnection();
@@ -125,18 +147,14 @@ public class UserRepository(DbConnectionFactory connectionFactory) : IUserReposi
         await cmd.ExecuteNonQueryAsync();
     }
 
-    /// <inheritdoc />
     public async Task DeleteAsync(int userId)
     {
         await using var connection = (SqlConnection)_connectionFactory.CreateConnection();
         await connection.OpenAsync();
 
-        // Start a transaction as we have to delete child records manually if CASCADE isn't set
         await using var transaction = connection.BeginTransaction();
         try
         {
-            // Delete related records (example: StudentProfile, applications, etc.)
-            // In a real system, we'd have a more comprehensive list.
             const string sqlProfiles = "DELETE FROM dbo.StudentProfile WHERE user_id = @Id;";
             await using (var cmdProfile = new SqlCommand(sqlProfiles, connection, transaction))
             {
@@ -167,9 +185,15 @@ public class UserRepository(DbConnectionFactory connectionFactory) : IUserReposi
         Email = r.GetString(r.GetOrdinal("email")),
         PasswordHash = r.GetString(r.GetOrdinal("password_hash")),
         Role = r.GetString(r.GetOrdinal("role")),
+
         EmailNotificationsEnabled = r.GetBoolean(r.GetOrdinal("email_notifications_enabled")),
         PushNotificationsEnabled = r.GetBoolean(r.GetOrdinal("push_notifications_enabled")),
         ThemePreference = r.GetString(r.GetOrdinal("theme_preference")),
+
+        Bio = r.IsDBNull(r.GetOrdinal("bio")) ? null : r.GetString(r.GetOrdinal("bio")),
+        Location = r.IsDBNull(r.GetOrdinal("location")) ? null : r.GetString(r.GetOrdinal("location")),
+        ProfilePictureUrl = r.IsDBNull(r.GetOrdinal("profile_picture_url")) ? null : r.GetString(r.GetOrdinal("profile_picture_url")),
+
         CreatedAt = r.GetDateTime(r.GetOrdinal("created_at"))
     };
 }
