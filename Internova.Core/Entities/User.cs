@@ -17,6 +17,12 @@ public class User
 
     /// <summary>Role values: "Student", "Company", "Admin"</summary>
     public string Role { get; set; } = string.Empty;
+    
+    public bool EmailNotificationsEnabled { get; set; } = true;
+
+    public bool PushNotificationsEnabled { get; set; } = true;
+
+    public string ThemePreference { get; set; } = "system";
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
