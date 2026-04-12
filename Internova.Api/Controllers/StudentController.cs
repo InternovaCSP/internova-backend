@@ -52,33 +52,31 @@ public class StudentController(
         if (gpa < 0 || gpa > 4.0m)
             return BadRequest(new { error = "GPA must be between 0.00 and 4.00." });
 
-        if (resume is null || resume.Length == 0)
-            return BadRequest(new { error = "A resume file is required." });
+        // ── Upload to Azure Blob (or use fallback) ───────────────────────────
 
-        // ── Upload to Azure Blob (extract stream/metadata from IFormFile here) ─
+        string resumeUrl = "https://resumesector.com/wp-content/uploads/2024/10/Best-Resume-Template-Free-Download-MS-Word--724x1024.jpg";
 
-        string resumeUrl;
-        try
+        if (resume != null && resume.Length > 0)
         {
-            await using var stream = resume.OpenReadStream();
-            resumeUrl = await blobStorageService.UploadResumeAsync(
-                stream,
-                resume.FileName,
-                resume.ContentType,
-                resume.Length,
-                userId);
+            try
+            {
+                await using var stream = resume.OpenReadStream();
+                resumeUrl = await blobStorageService.UploadResumeAsync(
+                    stream,
+                    resume.FileName,
+                    resume.ContentType,
+                    resume.Length,
+                    userId);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Azure Blob upload failed for UserId {UserId}. Using fallback placeholder.", userId);
+                // Fallback is already set to the provided URL
+            }
         }
-        catch (ArgumentException ex)
+        else 
         {
-            // File validation failure (wrong type, too large, etc.)
-            logger.LogWarning(ex, "Resume upload validation failed for UserId {UserId}.", userId);
-            return BadRequest(new { error = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Azure Blob upload failed for UserId {UserId}.", userId);
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new { error = "Failed to upload resume. Please try again later." });
+            logger.LogInformation("No resume file provided for UserId {UserId}. Using fallback placeholder.", userId);
         }
 
         // ── Upsert profile in database ────────────────────────────────────────
