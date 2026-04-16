@@ -51,6 +51,8 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
     });
 
+builder.Services.AddSignalR();
+
 // Swagger / OpenAPI with JWT Bearer support
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -170,6 +172,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<Internova.Api.Hubs.NotificationHub>("/hubs/notifications");
 
 app.Run();
 

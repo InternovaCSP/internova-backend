@@ -279,6 +279,29 @@ public static class DatabaseInitializer
             await createProjectParticipationCmd.ExecuteNonQueryAsync();
             logger.LogInformation("✅ Project_Participation table verified / created.");
 
+            // ── Create Notification Table if missing ──
+            const string createNotificationTableSql = @"
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Notification')
+                BEGIN
+                    CREATE TABLE Notification (
+                        notification_id INT IDENTITY(1,1) PRIMARY KEY,
+                        user_id INT NOT NULL,
+                        type VARCHAR(50) NOT NULL,
+                        content NVARCHAR(MAX) NOT NULL,
+                        target_url NVARCHAR(2048),
+                        is_read BIT DEFAULT 0,
+                        created_at DATETIME2 DEFAULT GETDATE(),
+                        CONSTRAINT FK_Notification_User FOREIGN KEY (user_id) REFERENCES [User](user_id) ON DELETE CASCADE
+                    );
+                    IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Notification_User_Read' AND object_id = OBJECT_ID('Notification'))
+                    BEGIN
+                        CREATE INDEX IX_Notification_User_Read ON Notification (user_id, is_read);
+                    END
+                END";
+            await using var createNotificationCmd = new SqlCommand(createNotificationTableSql, connection);
+            await createNotificationCmd.ExecuteNonQueryAsync();
+            logger.LogInformation("✅ Notification table verified / created.");
+
 
 
             // ── Step 3: Seed Admin User ──
