@@ -33,6 +33,7 @@ public static class ServiceRegistration
         services.AddScoped<IInterviewRepository, InterviewRepository>();
         services.AddScoped<IProjectRepository, ProjectRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<IAnalyticsRepository, AnalyticsRepository>();
 
         // --- Services ---
         services.AddScoped<IBlobStorageService, BlobStorageService>();
