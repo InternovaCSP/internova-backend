@@ -105,8 +105,6 @@ public class AuthController(
         });
     }
 
-    // ─── GET /api/auth/me ─────────────────────────────────────────────────────
-
     /// <summary>Returns the claims of the currently authenticated user.</summary>
     [HttpGet("me")]
     [Authorize]
@@ -116,6 +114,63 @@ public class AuthController(
     {
         var claims = User.Claims.Select(c => new { c.Type, c.Value });
         return Ok(new { claims });
+    }
+
+    // ─── POST /api/auth/change-password ───────────────────────────────────────
+
+    /// <summary>
+    /// Updates the password for the current user. 
+    /// Requires the current password for verification before applying the new one.
+    /// </summary>
+    [HttpPost("change-password")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var userIdClaim = User.FindFirstValue("user_id");
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+            return Unauthorized(new { error = "User identity missing." });
+
+        var user = await userRepository.GetByIdAsync(userId);
+        if (user == null)
+            return NotFound(new { error = "User not found." });
+
+        var hasher = new PasswordHasher<User>();
+        var result = hasher.VerifyHashedPassword(user, user.PasswordHash, request.CurrentPassword);
+
+        if (result == PasswordVerificationResult.Failed)
+            return BadRequest(new { error = "The current password provided is incorrect." });
+
+        var newHash = hasher.HashPassword(user, request.NewPassword);
+        await userRepository.UpdatePasswordAsync(userId, newHash);
+
+        return Ok(new { message = "Password updated successfully." });
+    }
+
+    // ─── DELETE /api/auth/account ─────────────────────────────────────────────
+
+    /// <summary>
+    /// Permanently deletes the authenticated user's account and all associated data.
+    /// This action is irreversible.
+    /// </summary>
+    [HttpDelete("account")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> DeleteAccount()
+    {
+        var userIdClaim = User.FindFirstValue("user_id");
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+            return Unauthorized(new { error = "User identity missing." });
+
+        await userRepository.DeleteAsync(userId);
+
+        return Ok(new { message = "Your account has been permanently deleted." });
     }
 
     // ─── JWT Generation ───────────────────────────────────────────────────────
