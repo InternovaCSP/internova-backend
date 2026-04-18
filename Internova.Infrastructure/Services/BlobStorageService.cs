@@ -75,4 +75,55 @@ public class BlobStorageService : IBlobStorageService
 
         return blobClient.Uri.ToString();
     }
+
+    /// <inheritdoc/>
+    public async Task<string> UploadImageAsync(
+        Stream stream,
+        string fileName,
+        string contentType,
+        long fileSizeBytes,
+        int userId)
+    {
+        // ── Validate ────────────────────────────────────────────────────────────
+
+        if (stream is null || fileSizeBytes == 0)
+            throw new ArgumentException("Image file is required.");
+
+        if (fileSizeBytes > MaxFileSizeBytes)
+            throw new ArgumentException(
+                $"Image file must not exceed 5 MB.");
+
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png" };
+        var isImage = (contentType.StartsWith("image/") || contentType == "application/octet-stream")
+                      && allowedExtensions.Contains(extension);
+
+        if (!isImage)
+            throw new ArgumentException("Only JPG and PNG images are accepted.");
+
+        // ── Ensure container exists (public read access for images) ──────────────
+
+        var serviceClient = new BlobServiceClient(_connectionString);
+        var containerClient = serviceClient.GetBlobContainerClient("profiles");
+        await containerClient.CreateIfNotExistsAsync(PublicAccessType.Blob);
+
+        // ── Build unique blob name ──────────────────────────────────────────────
+
+        var timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmssfff");
+        var blobName = $"{userId}_{timestamp}{extension}";
+        var blobClient = containerClient.GetBlobClient(blobName);
+
+        // ── Upload stream ───────────────────────────────────────────────────────
+
+        _logger.LogInformation("Uploading profile image '{BlobName}' for user {UserId}.", blobName, userId);
+
+        await blobClient.UploadAsync(stream, new BlobUploadOptions
+        {
+            HttpHeaders = new BlobHttpHeaders { ContentType = contentType }
+        });
+
+        _logger.LogInformation("Profile image '{BlobName}' uploaded successfully.", blobName);
+
+        return blobClient.Uri.ToString();
+    }
 }
