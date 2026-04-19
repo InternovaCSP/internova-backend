@@ -26,6 +26,9 @@ public class CompanyApprovalIntegrationTest : IClassFixture<WebApplicationFactor
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
+            // Skip the SQL Server startup check — tests use mocked repositories
+            builder.UseSetting("SkipDbInit", "true");
+
             builder.ConfigureTestServices(services =>
             {
                 // Remove the real repositories

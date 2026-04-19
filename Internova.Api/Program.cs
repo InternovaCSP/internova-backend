@@ -140,8 +140,12 @@ builder.Services.AddInfrastructure(builder.Configuration);
 var app = builder.Build();
 
 // Database bootstrap (idempotent — safe on every startup)
+// Skip when running integration tests (SkipDbInit=true is set by WebApplicationFactory)
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
-await DatabaseInitializer.InitializeAsync(app.Configuration, logger);
+if (!app.Configuration.GetValue<bool>("SkipDbInit"))
+{
+    await DatabaseInitializer.InitializeAsync(app.Configuration, logger);
+}
 
 // Always expose Swagger in all environments for this project
 app.UseSwagger();
