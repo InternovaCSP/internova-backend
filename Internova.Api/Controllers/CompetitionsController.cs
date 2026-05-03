@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Internova.Core.DTOs;
 using Internova.Core.Entities;
 using Internova.Core.Interfaces;
@@ -28,21 +29,42 @@ public class CompetitionsController : ControllerBase
     {
         try
         {
-            var competitions = await _competitionRepository.GetAllAsync();
-            var dtos = competitions.Select(c => new CompetitionDto
+            var userIdClaim = User.FindFirstValue("user_id");
+            int? currentStudentId = null;
+            if (!string.IsNullOrEmpty(userIdClaim) && int.TryParse(userIdClaim, out var id))
             {
-                Id = c.Id,
-                OrganizerId = c.OrganizerId,
-                Title = c.Title,
-                Description = c.Description,
-                Category = c.Category,
-                EligibilityCriteria = c.EligibilityCriteria,
-                StartDate = c.StartDate,
-                EndDate = c.EndDate,
-                RegistrationLink = c.RegistrationLink,
-                IsApproved = c.IsApproved,
-                OrganizerName = c.OrganizerName
-            });
+                currentStudentId = id;
+            }
+
+            var competitions = await _competitionRepository.GetAllAsync();
+            var dtos = new List<CompetitionDto>();
+
+            foreach (var c in competitions)
+            {
+                string? status = null;
+                if (currentStudentId.HasValue && User.IsInRole("Student"))
+                {
+                    var isRegistered = await _competitionRepository.IsStudentRegisteredAsync(c.Id, currentStudentId.Value);
+                    status = isRegistered ? "Registered" : null;
+                }
+
+                dtos.Add(new CompetitionDto
+                {
+                    Id = c.Id,
+                    OrganizerId = c.OrganizerId,
+                    Title = c.Title,
+                    Description = c.Description,
+                    Category = c.Category,
+                    EligibilityCriteria = c.EligibilityCriteria,
+                    StartDate = c.StartDate,
+                    EndDate = c.EndDate,
+                    RegistrationLink = c.RegistrationLink,
+                    IsApproved = c.IsApproved,
+                    OrganizerName = c.OrganizerName,
+                    Skills = c.Skills,
+                    CurrentUserStatus = status
+                });
+            }
 
             return Ok(dtos);
         }
@@ -67,9 +89,15 @@ public class CompetitionsController : ControllerBase
 
         try
         {
+            var userIdClaim = User.FindFirstValue("user_id");
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var adminId))
+            {
+                return Unauthorized(new { error = "Admin identity could not be determined." });
+            }
+
             var competition = new Competition
             {
-                OrganizerId = createDto.OrganizerId,
+                OrganizerId = adminId,
                 Title = createDto.Title,
                 Description = createDto.Description,
                 Category = createDto.Category,
@@ -77,7 +105,8 @@ public class CompetitionsController : ControllerBase
                 StartDate = createDto.StartDate,
                 EndDate = createDto.EndDate,
                 RegistrationLink = createDto.RegistrationLink,
-                IsApproved = false // Default to unapproved
+                Skills = createDto.Skills,
+                IsApproved = true // Default to approved if admin creates it directly
             };
 
             var added = await _competitionRepository.AddAsync(competition);
@@ -93,7 +122,8 @@ public class CompetitionsController : ControllerBase
                 StartDate = added.StartDate,
                 EndDate = added.EndDate,
                 RegistrationLink = added.RegistrationLink,
-                IsApproved = added.IsApproved
+                IsApproved = added.IsApproved,
+                Skills = added.Skills
             };
 
             return CreatedAtAction(nameof(GetAll), new { id = resultDto.Id }, resultDto);
@@ -133,6 +163,7 @@ public class CompetitionsController : ControllerBase
             existing.EndDate = updateDto.EndDate;
             existing.RegistrationLink = updateDto.RegistrationLink;
             existing.IsApproved = updateDto.IsApproved;
+            existing.Skills = updateDto.Skills;
 
             var success = await _competitionRepository.UpdateAsync(existing);
             if (!success)
@@ -176,6 +207,42 @@ public class CompetitionsController : ControllerBase
         {
             _logger.LogError(ex, "Error occurred while deleting competition {Id}.", id);
             return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Registers a student for a competition.
+    /// </summary>
+    [HttpPost("{id}/register")]
+    [Authorize(Roles = "Student")]
+    public async Task<IActionResult> Register(int id)
+    {
+        var userIdClaim = User.FindFirstValue("user_id");
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var studentId))
+        {
+            return Unauthorized(new { error = "Student identity could not be determined." });
+        }
+
+        try
+        {
+            var competition = await _competitionRepository.GetByIdAsync(id);
+            if (competition == null)
+            {
+                return NotFound(new { error = "Competition not found." });
+            }
+
+            var success = await _competitionRepository.RegisterStudentAsync(id, studentId);
+            if (!success)
+            {
+                return BadRequest(new { error = "Registration failed or already registered." });
+            }
+
+            return Ok(new { message = "Successfully registered for the competition!" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error registering student {StudentId} for competition {Id}", studentId, id);
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 }
