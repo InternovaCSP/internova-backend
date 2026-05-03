@@ -28,6 +28,24 @@ public class ProjectsController(IProjectRepository projectRepository, ILogger<Pr
         }
     }
 
+    // GET /api/projects/{id}: Get single project details
+    [HttpGet("{id:int}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetProjectById(int id)
+    {
+        try
+        {
+            var project = await projectRepository.GetProjectByIdAsync(id);
+            if (project == null) return NotFound(new { error = "Project not found" });
+            return Ok(project);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error fetching project {ProjectId}", id);
+            return StatusCode(500, new { error = "Internal server error" });
+        }
+    }
+
     // POST /api/projects: Create new project (Auto-assign creator as Leader)
     [HttpPost]
     [Authorize] // Student or any authorized user wanting to lead a project
@@ -55,10 +73,14 @@ public class ProjectsController(IProjectRepository projectRepository, ILogger<Pr
 
             var createdProject = await projectRepository.CreateProjectAsync(project);
 
-            // Auto-assign creator as Leader (Accepted status)
-            await projectRepository.AddProjectParticipationAsync(createdProject.Id, leaderId, "Leader", "Accepted");
+            // Auto-assign creator as Leader ONLY if they are a Student (per User request)
+            var userRole = User.FindFirstValue(ClaimTypes.Role);
+            if (userRole == "Student")
+            {
+                await projectRepository.AddProjectParticipationAsync(createdProject.Id, leaderId, "Leader", "Accepted");
+            }
 
-            return CreatedAtAction(nameof(GetProjects), new { id = createdProject.Id }, createdProject);
+            return CreatedAtAction(nameof(GetProjectById), new { id = createdProject.Id }, createdProject);
         }
         catch (Exception ex)
         {

@@ -202,7 +202,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHub<Internova.Api.Hubs.NotificationHub>("/hubs/notifications");
+app.MapHub<Internova.Api.Hubs.NotificationHub>("/api/hubs/notifications");
 
 app.Run();
 

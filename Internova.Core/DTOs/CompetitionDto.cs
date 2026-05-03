@@ -13,6 +13,8 @@ public class CompetitionDto
     public string? RegistrationLink { get; set; }
     public bool IsApproved { get; set; }
     public string? OrganizerName { get; set; }
+    public string? Skills { get; set; }
+    public string? CurrentUserStatus { get; set; }
 }
 
 public class CreateCompetitionDto
@@ -25,6 +27,7 @@ public class CreateCompetitionDto
     public DateTime? StartDate { get; set; }
     public DateTime? EndDate { get; set; }
     public string? RegistrationLink { get; set; }
+    public string? Skills { get; set; }
 }
 
 public class UpdateCompetitionDto
@@ -37,4 +40,5 @@ public class UpdateCompetitionDto
     public DateTime? EndDate { get; set; }
     public string? RegistrationLink { get; set; }
     public bool IsApproved { get; set; }
+    public string? Skills { get; set; }
 }
