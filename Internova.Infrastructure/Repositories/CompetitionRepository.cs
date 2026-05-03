@@ -28,7 +28,7 @@ public class CompetitionRepository : ICompetitionRepository
                    c.description AS Description, c.category AS Category, 
                    c.eligibility_criteria AS EligibilityCriteria, c.start_date AS StartDate, 
                    c.end_date AS EndDate, c.registration_link AS RegistrationLink, 
-                   c.is_approved AS IsApproved, u.full_name AS OrganizerName
+                   c.is_approved AS IsApproved, c.skills AS Skills, u.full_name AS OrganizerName
             FROM dbo.Competition c
             LEFT JOIN dbo.[User] u ON c.organizer_id = u.user_id
             WHERE c.competition_id = @Id";
@@ -53,7 +53,7 @@ public class CompetitionRepository : ICompetitionRepository
                    c.description AS Description, c.category AS Category, 
                    c.eligibility_criteria AS EligibilityCriteria, c.start_date AS StartDate, 
                    c.end_date AS EndDate, c.registration_link AS RegistrationLink, 
-                   c.is_approved AS IsApproved, u.full_name AS OrganizerName
+                   c.is_approved AS IsApproved, c.skills AS Skills, u.full_name AS OrganizerName
             FROM dbo.Competition c
             LEFT JOIN dbo.[User] u ON c.organizer_id = u.user_id";
 
@@ -73,8 +73,8 @@ public class CompetitionRepository : ICompetitionRepository
         await connection.OpenAsync();
 
         const string sql = @"
-            INSERT INTO dbo.Competition (organizer_id, title, description, category, eligibility_criteria, start_date, end_date, registration_link, is_approved)
-            VALUES (@OrganizerId, @Title, @Description, @Category, @EligibilityCriteria, @StartDate, @EndDate, @RegistrationLink, @IsApproved);
+            INSERT INTO dbo.Competition (organizer_id, title, description, category, eligibility_criteria, start_date, end_date, registration_link, is_approved, skills)
+            VALUES (@OrganizerId, @Title, @Description, @Category, @EligibilityCriteria, @StartDate, @EndDate, @RegistrationLink, @IsApproved, @Skills);
             SELECT CAST(SCOPE_IDENTITY() as int);";
 
         await using var cmd = new SqlCommand(sql, connection);
@@ -87,6 +87,7 @@ public class CompetitionRepository : ICompetitionRepository
         cmd.Parameters.AddWithValue("@EndDate", (object?)competition.EndDate ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@RegistrationLink", (object?)competition.RegistrationLink ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@IsApproved", competition.IsApproved);
+        cmd.Parameters.AddWithValue("@Skills", (object?)competition.Skills ?? DBNull.Value);
 
         competition.Id = (int)await cmd.ExecuteScalarAsync();
         return competition;
@@ -106,7 +107,8 @@ public class CompetitionRepository : ICompetitionRepository
                 start_date = @StartDate,
                 end_date = @EndDate,
                 registration_link = @RegistrationLink,
-                is_approved = @IsApproved
+                is_approved = @IsApproved,
+                skills = @Skills
             WHERE competition_id = @Id";
 
         await using var cmd = new SqlCommand(sql, connection);
@@ -119,6 +121,7 @@ public class CompetitionRepository : ICompetitionRepository
         cmd.Parameters.AddWithValue("@EndDate", (object?)competition.EndDate ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@RegistrationLink", (object?)competition.RegistrationLink ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@IsApproved", competition.IsApproved);
+        cmd.Parameters.AddWithValue("@Skills", (object?)competition.Skills ?? DBNull.Value);
 
         var affected = await cmd.ExecuteNonQueryAsync();
         return affected > 0;
@@ -138,6 +141,49 @@ public class CompetitionRepository : ICompetitionRepository
         return affected > 0;
     }
 
+    public async Task<bool> RegisterStudentAsync(int competitionId, int studentId)
+    {
+        try
+        {
+            await using var connection = (SqlConnection)_connectionFactory.CreateConnection();
+            await connection.OpenAsync();
+
+            const string sql = @"
+                IF NOT EXISTS (SELECT 1 FROM dbo.CompetitionParticipant WHERE competition_id = @CompId AND student_id = @StudentId)
+                BEGIN
+                    INSERT INTO dbo.CompetitionParticipant (competition_id, student_id, registration_date)
+                    VALUES (@CompId, @StudentId, GETDATE());
+                END";
+
+            await using var cmd = new SqlCommand(sql, connection);
+            cmd.Parameters.AddWithValue("@CompId", competitionId);
+            cmd.Parameters.AddWithValue("@StudentId", studentId);
+
+            var affected = await cmd.ExecuteNonQueryAsync();
+            return affected > 0;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error registering student {StudentId} for competition {CompId}", studentId, competitionId);
+            return false;
+        }
+    }
+
+    public async Task<bool> IsStudentRegisteredAsync(int competitionId, int studentId)
+    {
+        await using var connection = (SqlConnection)_connectionFactory.CreateConnection();
+        await connection.OpenAsync();
+
+        const string sql = "SELECT COUNT(1) FROM dbo.CompetitionParticipant WHERE competition_id = @CompId AND student_id = @StudentId";
+
+        await using var cmd = new SqlCommand(sql, connection);
+        cmd.Parameters.AddWithValue("@CompId", competitionId);
+        cmd.Parameters.AddWithValue("@StudentId", studentId);
+
+        var count = (int)await cmd.ExecuteScalarAsync();
+        return count > 0;
+    }
+
     private static Competition MapCompetition(SqlDataReader r) => new()
     {
         Id = r.GetInt32(r.GetOrdinal("Id")),
@@ -150,6 +196,7 @@ public class CompetitionRepository : ICompetitionRepository
         EndDate = r.IsDBNull(r.GetOrdinal("EndDate")) ? null : r.GetDateTime(r.GetOrdinal("EndDate")),
         RegistrationLink = r.IsDBNull(r.GetOrdinal("RegistrationLink")) ? null : r.GetString(r.GetOrdinal("RegistrationLink")),
         IsApproved = r.GetBoolean(r.GetOrdinal("IsApproved")),
-        OrganizerName = r.IsDBNull(r.GetOrdinal("OrganizerName")) ? null : r.GetString(r.GetOrdinal("OrganizerName"))
+        OrganizerName = r.IsDBNull(r.GetOrdinal("OrganizerName")) ? null : r.GetString(r.GetOrdinal("OrganizerName")),
+        Skills = r.IsDBNull(r.GetOrdinal("Skills")) ? null : r.GetString(r.GetOrdinal("Skills"))
     };
 }

@@ -9,4 +9,6 @@ public interface ICompetitionRepository
     Task<Competition> AddAsync(Competition competition);
     Task<bool> UpdateAsync(Competition competition);
     Task<bool> DeleteAsync(int id);
+    Task<bool> RegisterStudentAsync(int competitionId, int studentId);
+    Task<bool> IsStudentRegisteredAsync(int competitionId, int studentId);
 }

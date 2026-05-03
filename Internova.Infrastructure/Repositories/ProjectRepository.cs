@@ -34,21 +34,21 @@ public class ProjectRepository(DbConnectionFactory connectionFactory, ILogger<Pr
         return project;
     }
 
-    public async Task<bool> AddProjectParticipationAsync(int projectId, int studentId, string role, string status)
+    public async Task<bool> AddProjectParticipationAsync(int projectId, int userId, string role, string status)
     {
         await using var connection = (SqlConnection)connectionFactory.CreateConnection();
         await connection.OpenAsync();
 
         const string sql = @"
-            IF NOT EXISTS (SELECT 1 FROM dbo.Project_Participation WHERE project_id = @ProjectId AND student_id = @StudentId)
+            IF NOT EXISTS (SELECT 1 FROM dbo.Project_Participation WHERE project_id = @ProjectId AND student_id = @UserId)
             BEGIN
                 INSERT INTO dbo.Project_Participation (project_id, student_id, role, status, joined_at)
-                VALUES (@ProjectId, @StudentId, @Role, @Status, GETDATE());
+                VALUES (@ProjectId, @UserId, @Role, @Status, GETDATE());
             END";
 
         await using var cmd = new SqlCommand(sql, connection);
         cmd.Parameters.AddWithValue("@ProjectId", projectId);
-        cmd.Parameters.AddWithValue("@StudentId", studentId);
+        cmd.Parameters.AddWithValue("@UserId", userId);
         cmd.Parameters.AddWithValue("@Role", role);
         cmd.Parameters.AddWithValue("@Status", status);
 
@@ -141,7 +141,7 @@ public class ProjectRepository(DbConnectionFactory connectionFactory, ILogger<Pr
         };
     }
 
-    public async Task<IEnumerable<ProjectRequestResponseDto>> GetStudentParticipationsAsync(int studentId)
+    public async Task<IEnumerable<ProjectRequestResponseDto>> GetStudentParticipationsAsync(int userId)
     {
         var requests = new List<ProjectRequestResponseDto>();
         await using var connection = (SqlConnection)connectionFactory.CreateConnection();
@@ -153,11 +153,11 @@ public class ProjectRepository(DbConnectionFactory connectionFactory, ILogger<Pr
                    r.role AS Role, r.status AS Status, r.joined_at AS JoinedAt
             FROM dbo.Project_Participation r
             JOIN dbo.Project p ON r.project_id = p.project_id
-            WHERE r.student_id = @StudentId
+            WHERE r.student_id = @UserId
             ORDER BY r.joined_at DESC";
 
         await using var cmd = new SqlCommand(sql, connection);
-        cmd.Parameters.AddWithValue("@StudentId", studentId);
+        cmd.Parameters.AddWithValue("@UserId", userId);
 
         await using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())

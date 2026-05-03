@@ -32,4 +32,5 @@ public class Competition
 
     public bool IsApproved { get; set; } = false;
     public string? OrganizerName { get; set; }
+    public string? Skills { get; set; }
 }
