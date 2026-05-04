@@ -7,6 +7,11 @@ using System.Security.Claims;
 
 namespace Internova.Api.Controllers;
 
+/// <summary>
+/// Manages internship postings. 
+/// Companies can create/update/delete their own postings.
+/// Students and Guests can browse active postings.
+/// </summary>
 [ApiController]
 [Route("api/internships")]
 public class InternshipsController(
@@ -15,7 +20,10 @@ public class InternshipsController(
     IUserRepository userRepository,
     ILogger<InternshipsController> logger) : ControllerBase
 {
-    // ─── GET /api/internships/my/postings ─────────────────────────────────────
+    /// <summary>
+    /// Retrieves all internship postings created by the currently authenticated company.
+    /// </summary>
+    /// <returns>A list of internship entities.</returns>
     [HttpGet("my/postings")]
     [Authorize(Roles = "Company")]
     public async Task<IActionResult> GetForCompany()
@@ -45,7 +53,11 @@ public class InternshipsController(
         }
     }
 
-    // ─── GET /api/internships ────────────────────────────────────────────────
+    /// <summary>
+    /// Retrieves all active and published internship postings.
+    /// Accessible to everyone.
+    /// </summary>
+    /// <returns>A list of active internships.</returns>
     [HttpGet]
     [AllowAnonymous]
     public async Task<IActionResult> GetAll()
@@ -57,7 +69,11 @@ public class InternshipsController(
         return Ok(approvedAndPublished);
     }
 
-    // ─── GET /api/internships/{id} ───────────────────────────────────────────
+    /// <summary>
+    /// Retrieves a specific internship posting by its unique ID.
+    /// </summary>
+    /// <param name="id">The ID of the internship.</param>
+    /// <returns>The internship entity or 404 Not Found.</returns>
     [HttpGet("{id:int}")]
     [AllowAnonymous]
     public async Task<IActionResult> GetById(int id)
@@ -67,7 +83,12 @@ public class InternshipsController(
         return Ok(internship);
     }
 
-    // ─── POST /api/internships ───────────────────────────────────────────────
+    /// <summary>
+    /// Creates a new internship posting for the authenticated company.
+    /// If the company profile is missing, a stub profile is created.
+    /// </summary>
+    /// <param name="dto">The internship details.</param>
+    /// <returns>The created internship with a link to its location.</returns>
     [HttpPost]
     [Authorize(Roles = "Company")]
     public async Task<IActionResult> Create([FromBody] CreateInternshipDto dto)
@@ -120,7 +141,13 @@ public class InternshipsController(
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
     }
 
-    // ─── PUT /api/internships/{id} ────────────────────────────────────────────
+    /// <summary>
+    /// Updates an existing internship posting.
+    /// Only the company that created the posting can update it.
+    /// </summary>
+    /// <param name="id">The ID of the internship to update.</param>
+    /// <param name="dto">The updated internship details.</param>
+    /// <returns>The updated internship entity.</returns>
     [HttpPut("{id:int}")]
     [Authorize(Roles = "Company")]
     public async Task<IActionResult> Update(int id, [FromBody] CreateInternshipDto dto)
@@ -152,7 +179,12 @@ public class InternshipsController(
         return Ok(existing);
     }
 
-    // ─── DELETE /api/internships/{id} ─────────────────────────────────────────
+    /// <summary>
+    /// Deletes an internship posting.
+    /// Only the company that created the posting can delete it.
+    /// </summary>
+    /// <param name="id">The ID of the internship to delete.</param>
+    /// <returns>204 No Content on success.</returns>
     [HttpDelete("{id:int}")]
     [Authorize(Roles = "Company")]
     public async Task<IActionResult> Delete(int id)

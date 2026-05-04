@@ -74,6 +74,15 @@ builder.Services.AddSwaggerGen(c =>
         In           = ParameterLocation.Header,
         Description  = "Enter your JWT token. Example: eyJhbGci..."
     });
+
+    // Use the XML documentation file
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    c.IncludeXmlComments(xmlPath);
+
+    // Fix schema ID collisions by using full names
+    c.CustomSchemaIds(type => type.FullName);
+
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {

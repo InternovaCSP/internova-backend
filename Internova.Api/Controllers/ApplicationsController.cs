@@ -6,6 +6,11 @@ using System.Security.Claims;
 
 namespace Internova.Api.Controllers;
 
+/// <summary>
+/// Manages internship applications.
+/// Students can apply to internships and view their application status.
+/// Companies can view applications for their postings and update status.
+/// </summary>
 [ApiController]
 [Route("api/applications")]
 [Authorize]
@@ -14,11 +19,17 @@ public class ApplicationsController(
     IStudentProfileRepository studentProfileRepository,
     ILogger<ApplicationsController> logger) : ControllerBase
 {
-    // ─── GET /api/applications/student/{id}/profile ─────────────────────────
+    /// <summary>
+    /// Retrieves a student's profile by their user ID.
+    /// Accessible to Companies and Admins only.
+    /// </summary>
+    /// <param name="studentId">The ID of the student user.</param>
+    /// <returns>The student profile or 404 Not Found.</returns>
     [HttpGet("student/{studentId:int}/profile")]
     [Authorize(Roles = "Company,Admin")]
     public async Task<IActionResult> GetStudentProfile(int studentId)
     {
+        // (Implementation remains unchanged)
         try
         {
             var profile = await studentProfileRepository.GetByUserIdAsync(studentId);
@@ -31,11 +42,16 @@ public class ApplicationsController(
             return StatusCode(500, new { error = "Internal server error" });
         }
     }
-    // ─── GET /api/applications/pipeline-stats ────────────────────────────────
+
+    /// <summary>
+    /// Retrieves application pipeline statistics for the authenticated student.
+    /// </summary>
+    /// <returns>Statistics about application stages.</returns>
     [HttpGet("pipeline-stats")]
     [Authorize(Roles = "Student")]
     public async Task<IActionResult> GetPipelineStats()
     {
+        // ... (remaining methods will be updated similarly)
         var userIdClaim = User.FindFirstValue("user_id");
         if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var studentId))
         {
@@ -54,7 +70,10 @@ public class ApplicationsController(
         }
     }
 
-    // ─── GET /api/applications/company ─────────────────────────────────────
+    /// <summary>
+    /// Retrieves all applications received by the authenticated company.
+    /// </summary>
+    /// <returns>A list of applications.</returns>
     [HttpGet("company")]
     [Authorize(Roles = "Company")]
     public async Task<IActionResult> GetCompanyApplications()
@@ -77,7 +96,13 @@ public class ApplicationsController(
         }
     }
 
-    // ─── PATCH /api/applications/{id}/status ────────────────────────────────
+    /// <summary>
+    /// Updates the status of a specific application (e.g., Shortlisted, Rejected).
+    /// Only companies can update application status.
+    /// </summary>
+    /// <param name="id">The ID of the application.</param>
+    /// <param name="request">The new status value.</param>
+    /// <returns>A success message or 404.</returns>
     [HttpPatch("{id:int}/status")]
     [Authorize(Roles = "Company")]
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateStatusRequest request)
@@ -101,7 +126,12 @@ public class ApplicationsController(
         }
     }
 
-    // ─── POST /api/applications/apply ──────────────────────────────────────
+    /// <summary>
+    /// Submits a new application for an internship.
+    /// Authenticated student identity is taken from the JWT token.
+    /// </summary>
+    /// <param name="request">The internship ID to apply for.</param>
+    /// <returns>A success message.</returns>
     [HttpPost("apply")]
     [Authorize(Roles = "Student")]
     public async Task<IActionResult> Apply([FromBody] ApplyRequest request)
@@ -140,7 +170,10 @@ public class ApplicationsController(
         }
     }
 
-    // ─── GET /api/applications/student ─────────────────────────────────────
+    /// <summary>
+    /// Retrieves all applications submitted by the authenticated student.
+    /// </summary>
+    /// <returns>A list of applications.</returns>
     [HttpGet("student")]
     [Authorize(Roles = "Student")]
     public async Task<IActionResult> GetStudentApplications()
@@ -163,7 +196,10 @@ public class ApplicationsController(
         }
     }
 
-    // ─── GET /api/applications/kpi-stats ───────────────────────────────────
+    /// <summary>
+    /// Retrieves Key Performance Indicators (KPI) for the authenticated student's applications.
+    /// </summary>
+    /// <returns>KPI metrics.</returns>
     [HttpGet("kpi-stats")]
     [Authorize(Roles = "Student")]
     public async Task<IActionResult> GetKpiStats()
