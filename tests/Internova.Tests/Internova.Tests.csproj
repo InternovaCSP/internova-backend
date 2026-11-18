@@ -23,7 +23,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Internova.Api\Internova.Api.csproj" />
-    <ProjectReference Include="..\..\Internova.Core\Internova.Core.csproj" />
   </ItemGroup>
 
 </Project>

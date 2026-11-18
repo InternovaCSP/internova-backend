@@ -104,11 +104,8 @@ DECLARE @InternshipId INT = (SELECT internship_id FROM Internship WHERE title = 
 IF NOT EXISTS (SELECT 1 FROM Project_Participation WHERE project_id = @ProjectId AND student_id = @StudentBobId)
     INSERT INTO Project_Participation (project_id, student_id, role, status) VALUES (@ProjectId, @StudentBobId, 'Developer', 'Accepted');
 
-IF NOT EXISTS (SELECT 1 FROM Competition_Participation WHERE competition_id = @CompId AND student_id = @StudentAliceId)
-    INSERT INTO Competition_Participation (competition_id, student_id, status) VALUES (@CompId, @StudentAliceId, 'Registered');
-
 IF NOT EXISTS (SELECT 1 FROM Internship_Application WHERE internship_id = @InternshipId AND student_id = @StudentAliceId)
     INSERT INTO Internship_Application (internship_id, student_id, status) VALUES (@InternshipId, @StudentAliceId, 'Applied');
 
-PRINT '✅ Database seeding completed successfully.';
+PRINT 'Database seeding completed successfully.';
 GO

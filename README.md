@@ -1,130 +1,89 @@
 # internova-backend
 
-ASP.NET Core Web API for **Internova – University Internship & Industry Matching Portal**
+ASP.NET Core Web API (.NET 10) for **Internova – University Internship & Industry Matching Portal**, structured using **Clean Architecture inside a single API project**.
 
 ---
 
 ## Project Structure
 
-```
+```text
 internova-backend/
-├── Internova.Core/           ← Domain layer (no external dependencies)
-│   ├── Entities/User.cs
-│   └── Interfaces/IUserRepository.cs
-├── Internova.Infrastructure/ ← Data access + external services
-│   ├── Data/AppDbContext.cs
-│   ├── Repositories/UserRepository.cs
-│   └── DependencyInjection/ServiceRegistration.cs
-└── Internova.Api/            ← Web API entry point
-    ├── Controllers/HealthController.cs
-    ├── Program.cs
-    └── appsettings.json
+├── Internova.slnx                             # Internova.Api + tests/Internova.Tests
+├── scripts/
+│   ├── schema.sql                             # Single canonical SQL Server schema (embedded in API)
+│   └── seed_data.sql                          # Local development seed data
+├── docs/
+│   ├── Guides/
+│   └── architecture/                          # System, deployment, and authentication architecture docs
+├── Internova.Api/                             # Single Web API project (Clean Architecture layers)
+│   ├── Domain/                                # Innermost layer (zero framework/DB dependencies)
+│   │   ├── Entities/                          # User, StudentProfile, CompanyProfile, Internship, etc.
+│   │   └── Enums/                             # ApplicationStatus, CompanyStatus
+│   ├── Application/                           # Contracts & DTOs (depends only on Domain)
+│   │   ├── DTOs/                              # Feature DTO files (AuthDtos, InternshipDtos, etc.)
+│   │   └── Interfaces/                        # Repository and service contracts
+│   ├── Infrastructure/                      # Dapper data access & external integrations
+│   │   ├── Data/                              # DbConnectionFactory, DatabaseInitializer
+│   │   ├── Repositories/                      # 12 Dapper repositories
+│   │   ├── Services/                          # AuthService, BlobStorageService, EmailService, MeetingService
+│   │   └── DependencyInjection.cs             # AddInfrastructure()
+│   ├── Presentation/                          # HTTP & SignalR boundary
+│   │   ├── Authorization/                     # CompanyApprovalRequirement
+│   │   ├── Controllers/                       # 15 thin REST controllers
+│   │   ├── Extensions/                        # ClaimsPrincipalExtensions, ServiceCollectionExtensions
+│   │   ├── Hubs/                              # NotificationHub
+│   │   ├── Middleware/                        # GlobalExceptionHandler
+│   │   └── Requests/                          # Multipart form payloads
+│   └── Program.cs                             # Minimal composition root
+└── tests/
+    └── Internova.Tests/                       # xUnit unit & integration tests
+        ├── Helpers/
+        ├── Integration/
+        └── Unit/
 ```
 
 ### Dependency Direction
 
+```text
+Presentation ──► Application ◄── Infrastructure
+                      │                │
+                      ▼                │
+                    Domain ◄───────────┘
 ```
-Internova.Api
-    ├── → Internova.Core          (domain contracts)
-    └── → Internova.Infrastructure
-              └── → Internova.Core
-```
-
-`Internova.Core` has **zero** external dependencies — pure domain logic only.
 
 ---
 
-## NuGet Packages
-
-| Project | Package | Version |
-|---|---|---|
-| Infrastructure | Pomelo.EntityFrameworkCore.MySql | 9.0.0 |
-| Infrastructure | Microsoft.EntityFrameworkCore.Design | 9.0.0 |
-| Infrastructure | Azure.Storage.Blobs | 12.27.0 |
-| Infrastructure | BCrypt.Net-Next | 4.1.0 |
-| Api | Swashbuckle.AspNetCore | 10.1.4 |
-
-> **Note on EF Core version:** All EF Core packages are pinned to **9.0.0** to align with Pomelo's constraints. Fully forward-compatible with .NET 10.
-
----
-
-## ⚙️ Local Run (All Platforms)
+## Local Setup
 
 ### Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
-- MySQL 8+ running locally (or via Docker)
+- SQL Server / LocalDB (or Azure SQL)
 
-### 1. Set up local configuration
+### 1. Configure Secrets & Connection String
 
-```bash
-# From the repo root
-cp Internova.Api/appsettings.Development.example.json Internova.Api/appsettings.Development.json
+```powershell
+cd Internova.Api
+dotnet user-secrets init
+dotnet user-secrets set "Jwt:Key" "<your-32+-character-random-secret>"
+dotnet user-secrets set "Jwt:Issuer" "Internova"
+dotnet user-secrets set "Jwt:Audience" "InternovaUsers"
 ```
 
-> **Windows (PowerShell):**
-> ```powershell
-> Copy-Item Internova.Api\appsettings.Development.example.json Internova.Api\appsettings.Development.json
-> ```
+Copy `Internova.Api/appsettings.Development.example.json` to `Internova.Api/appsettings.Development.json` and update `ConnectionStrings:DefaultConnection`.
 
-Then open `appsettings.Development.json` and update your MySQL password:
+### 2. Build & Test
 
-```json
-{
-  "ConnectionStrings": {
-    "Default": "server=localhost;port=3306;database=internova_db;user=root;password=YOUR_MYSQL_PASSWORD"
-  }
-}
+```powershell
+dotnet build --configuration Release
+dotnet test --configuration Release --filter "Category!=LocalDb"
 ```
 
-> `appsettings.Development.json` is gitignored — your credentials will never be committed.
+### 3. Run the API
 
-### 2. Build
-
-```bash
-dotnet build
-```
-
-Expected output: `Build succeeded` with **0 errors, 0 warnings**.
-
-### 3. Run EF Core migrations (first time only)
-
-From the `internova-backend/` directory:
-
-```bash
-dotnet ef migrations add InitialCreate --project Internova.Infrastructure --startup-project Internova.Api
-dotnet ef database update --project Internova.Infrastructure --startup-project Internova.Api
-```
-
-### 4. Run the API
-
-```bash
+```powershell
 dotnet run --project Internova.Api
 ```
 
-### 5. Verify
-
-| Endpoint | URL |
-|---|---|
-| Swagger UI | http://localhost:5000/swagger |
-| Health check | GET http://localhost:5000/api/health/ping → `{"status":"ok"}` |
-
----
-
-## Key Design Decisions
-
-- **Primary constructors** (C# 12) used for `AppDbContext` and `UserRepository` — minimal boilerplate
-- **BCrypt hashing** via `BCrypt.Net-Next` — use `BCrypt.HashPassword()` / `BCrypt.Verify()` in the auth service
-- **Azure.Storage.Blobs** installed and ready for document/CV upload features
-- **`AsNoTracking()`** used in read-only queries for better EF Core performance
-- **Unique index on Email** enforced at both DB and model level
-
----
-
-## Verified Build & Runtime
-
-| Check | Result |
-|---|---|
-| `dotnet build` | ✅ 0 errors, 0 warnings |
-| Swagger UI at `/swagger` | ✅ HTTP 200, UI loads |
-| `GET /api/health/ping` | ✅ `{"status":"ok"}` |
+- Swagger UI: `/swagger`
+- Health check: `GET /api/health/ping`

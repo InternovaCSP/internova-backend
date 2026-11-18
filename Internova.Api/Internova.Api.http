@@ -1,6 +1,13 @@
 @Internova.Api_HostAddress = http://localhost:5128
 
-GET {{Internova.Api_HostAddress}}/weatherforecast/
+### Health check
+GET {{Internova.Api_HostAddress}}/api/health/ping
 Accept: application/json
 
-###
+### Public internships
+GET {{Internova.Api_HostAddress}}/api/internships
+Accept: application/json
+
+### Public competitions
+GET {{Internova.Api_HostAddress}}/api/competitions
+Accept: application/json
